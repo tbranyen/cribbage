@@ -1,0 +1,133 @@
+<?php
+
+	// Leave error reporting to me
+	//error_reporting(E_ERROR | E_WARNING | E_PARSE | E_NOTICE);
+	
+	// Provides data communication to MySQL databases
+	class MySQLDataConn
+	{
+		// Database properties
+		private $dbhost;		// Location of database
+		private $dbusername;		// User name
+		private $dbuserpassword;	// User password
+		private $default_dbname;	// Default database name
+		private $connection;		// Holds database connection
+		private $conn_database;		// Select the proper database
+		
+		// SQL properties
+		private $query;			// Holds the SQL query
+		private $sql_rows;		// Array containing associative array with each row
+		
+		// Set properties on load
+		public function __construct($_dbhost, $_dbusername, $_dbuserpassword, $_default_dbname)
+		{
+			$this->dbhost = $_dbhost;
+			$this->dbusername = $_dbusername;
+			$this->dbuserpassword = $_dbuserpassword;
+			$this->default_dbname = $_default_dbname;
+		}
+		
+		// Accessors
+		public function getdbhost() { return $this->dbhost; }
+		public function getdbusername() { return $this->dbusername; }
+		public function getdefault_dbname() { return $this->default_dbname; }
+		
+		// Mutators
+		public function setdbhost($_dbhost) { $this->dbhost = $_dbhost; }
+		public function setdbusername($_dbusername) { $this->dbusername = $_dbusername; }
+		public function setdbuserpassword($_dbuserpassword) { $this->dbuserpassword = $_dbuserpassword; }
+		public function setdefault_dbname($_default_dbname) { $this->default_dbname = $_default_dbname; }
+		
+		// Connect to server
+		public function conn()
+		{
+			try
+			{
+				// Create connection
+				$this->connection = @mysql_connect($this->dbhost, $this->dbusername, $this->dbuserpassword);
+				
+				// Check connection
+				if (!is_resource($this->connection))
+					throw new Exception("Unable to connect to database.");
+									
+				try
+				{
+					// Create connection
+					$this->conn_database = @mysql_select_db($this->default_dbname);
+					
+					// Check connection
+					if (!$this->conn_database)
+						throw new Exception("Unable to use database.");
+						
+					
+				}
+				catch (Exception $e)
+				{
+					print $e->getMessage();
+					return false;
+				}
+					
+				return true;
+			}
+			catch (Exception $e)
+			{
+				print $e->getMessage();
+				return false;
+			}
+		}
+		
+		// SQL SELECT method
+		public function sql_select($_cmd)
+		{
+			// Clear out existing data
+			$this->sql_rows = null;
+			
+			// Execute query
+			$this->query = mysql_query($_cmd);
+						
+			// Check to make sure the query went through and has data returned
+			if(mysql_num_rows($this->query) > 0)
+			{
+				$i = 0;
+			
+				while($row = mysql_fetch_array($this->query))
+				{
+					$this->sql_rows[$i] = $row;
+					$i++;
+				}
+				
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		
+		// SQL INSERT/UPDATE/DELETE method
+		public function sql_other($_cmd)
+		{
+			// Execute query
+			$this->query = mysql_query($_cmd);
+			
+			// Check to make sure query went through
+			if (mysql_affected_rows($this->connection) > 0)
+				return true;
+			else
+				return false;
+		}
+		
+		// Get data from SELECT method
+		public function sql_get_select($_index, $_column)
+		{
+			return $this->sql_rows[$_index][$_column];
+		}
+		
+		// Get number of rows
+		public function sql_get_rows()
+		{
+			return sizeof($this->sql_rows);
+		}
+	}
+	
+?>

@@ -1,0 +1,42 @@
+<?php
+
+	// Handles user sessions
+	class UserSession {
+	
+		// Session properties
+		private $user_id;
+		private $session_hash;
+		private $session_password;
+		
+		// Parameterized constructor, build session object from existing session
+		public function __construct($_session_hash, $_session_password) {
+			// Existing user
+			if (isset($_session_hash) && isset($_session_password)) {
+				$this->user_id = $_SESSION["UserID"];
+				$this->session_hash = $_session_hash;
+				$this->session_password = $_session_password;
+			}
+			// New user
+			else {
+				Header("Location: login.html");
+			}
+		}
+		
+		// Make sure user has proper privileges 
+		public function assert($_dataConn) {
+			$dataConn = $_dataConn;
+			if ($dataConn->conn()) {
+				if ($dataConn->sql_select("SELECT * FROM Sessions WHERE UserID = " . $this->user_id . ";")) {
+					if ($dataConn->sql_get_select(0, "SessionID") == $this->session_hash && $dataConn->sql_get_select(0, "SessionPassword") == $this->session_password) {						
+						return true;					
+					}
+				}
+			}
+			else {
+				return false;
+			}
+		}
+		
+	}
+	
+?>

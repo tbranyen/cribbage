@@ -1,0 +1,333 @@
+/* Page elements */
+body {
+	padding: 5px;
+	margin: 0px;
+
+	font-family: Georgia, Times, serif;
+
+	background-color: #5A4924;
+	background-image: url(../img/background.jpg);
+	background-attachment: fixed;
+}
+
+/* Page level styles */
+#output {
+	color: #FFFFFF;
+}
+#background {
+	position: fixed;
+	top: 0px;
+	left: 0px;
+	width: 100%;
+	height: 100%;
+
+	background-color: #5A4924;
+	background-image: url(../img/background.jpg);
+	background-attachment: fixed;
+
+	display: block;
+}
+#svgContainer {
+	border: 7px solid #C2AC7D;
+	margin: 0px auto;
+}
+#displayContent {
+	top: 416px;
+}
+#divTransparency {
+	position: fixed;
+	top: 0px;
+	left: 0px;
+	width: 100%;
+	height: 100%;
+
+	background-color: #000000;
+
+	opacity: .8;
+
+	display: none;
+}
+
+/* More */
+#divMessageBox {
+	position: fixed;
+	width: 500px;
+	height: 50px;
+
+	color: #604E25;
+
+	bottom: -120px;
+	left: 25%;
+
+	text-align: center;
+	font-weight: bold;
+	font-size: 18px;
+
+	padding: 20px;
+
+	border-top: 5px solid #FFFFFF;
+	border-left: 5px solid #FFFFFF;
+	border-right: 5px solid #FFFFFF;
+
+	background-color: #D1CAA8;
+}
+#buttonLogin {
+	position: relative;
+	top: -110px;
+	left: 10px;
+
+	background-color: #5C7C3A;
+}
+#buttonRegister {
+	position: relative;
+	top: -60px;
+	left: -290px;
+
+	background-color: #7C3F3A;
+}
+.button {
+	width: 300px;
+	height: 40px;
+
+	color: #FFFFFF;
+	text-transform: uppercase;
+	font-family: Georgia, Times, serif;
+	background-color: #601E1E;
+	border: 0px solid #FFFFFF;
+}
+#divInformation {
+	position: relative;
+	width: 373px;
+	height: 298px;
+	top: -368px;
+	left: 340px;
+
+	padding-right: 15px;
+
+	overflow: auto;
+}
+
+/* Information elements */
+.spanInformationHeader {
+	font-weight: bold;
+}
+.aReturn {
+	text-decoration: none;
+	color: #333399;
+	
+	cursor: hand;
+	cursor: pointer;
+}
+
+/* Login elements */
+#inputUsername {
+	border: 1px solid #C0C0C0;
+	
+	margin-left: 4px;
+	margin-bottom: 3px;
+	padding: 4px;
+
+	color: #303030;
+	font-family: Georgia, Times, serif;
+	font-weight: bold;
+	font-size: 12px;
+}
+#inputPassword {
+	border: 1px solid #C0C0C0;
+	
+	margin-left: 7px;
+	margin-bottom: 3px;
+	padding: 4px;
+
+	color: #303030;
+	font-family: Georgia, Times, serif;
+	font-weight: bold;
+	font-size: 12px;
+}
+.aForgot {
+	padding-left: 10px;
+
+	text-decoration: underline;
+	color: #990000;
+
+	cursor: hand;
+	cursor: pointer;
+}
+
+/* Registration elements */
+.spanRegisterHeader {
+	color: #707070;
+	font-family: Georgia, Times, serif;
+	font-weight: bold;
+	font-size: 14px;
+}
+.spanErrorMessage {
+	color: #FF0000;
+	font-family: Georgia, Times, serif;
+	font-weight: bold;
+	font-size: 11px;
+}
+.inputRegisterText {
+	border: 1px solid #C0C0C0;
+	
+	margin: 4px;
+	padding: 4px;
+
+	color: #303030;
+	font-family: Georgia, Times, serif;
+	font-weight: bold;
+	font-size: 12px;
+}
+
+/* Create game */
+#textCreateUser {
+	fill: #333333;
+	font-size: 16px;
+	font-weight: bold;
+	text-decoration: underline;
+}
+#textInstructions {
+	position: absolute;
+	top: 50px;
+	left: -150px;
+
+	font-size: 14px;
+
+	width: 300px;
+}
+#spanStartGame {
+	font-size: 14px;
+	font-weight: bold;
+	color: #880000;
+	text-decoration: underline;
+
+	cursor: hand;
+	cursor: pointer;
+}
+#divInstructions {
+	position: relative;
+	width: 300px;
+	height: 130px;
+	top: -320px;
+	left: 25px;
+
+	overflow: auto;
+}
+
+/* Invite */
+#inputYes {
+	background-color: #5C7C3A;
+	margin-right: 3px;
+}
+#inputNo {
+	background-color: #7C3F3A;
+	margin-left: 3px;
+}
+.inviteButton {
+	width: 90px;
+	height: 20px;
+
+	color: #FFFFFF;
+	text-transform: uppercase;
+	font-family: Georgia, Times, serif;
+	border: 0px solid #FFFFFF;
+}
+#divInviteUser {
+	position: relative;
+	top: -3px;
+	left: 0px;
+
+	font-size: 28px;
+	font-weight: bold;
+
+	border: dotted 1px #303030;
+
+	padding-top: 4px;
+	padding-left: 6px;
+	margin: 4px;
+	
+	width: 230px;
+	height: 40px;
+
+	background-color: #FFFFFF;
+}
+#divInviteBox {
+	position: relative;
+	width: 300px;
+	height: 130px;
+	top: -479px;
+	left: 370px;
+
+	overflow: auto;
+}
+#inputInvite {
+	background-color: #31601E;
+	margin-left: 5px;
+	margin-right: 3px;
+
+	width: 130px;
+	height: 28px;
+}
+#inputCancel {
+	background-color: #601E1E;
+	margin-left: 3px;
+
+	width: 100px;
+	height: 28px;
+}
+
+/* Rest of board */
+#inputToCrib {
+	width: 172px;
+	height: 44px;
+
+	position: absolute;
+	top: 65px;
+	left: 560px;
+
+	border: 1px solid #D5CEAC;
+
+	background-color: #5C7C3A;
+}
+#inputPlay {
+	width: 172px;
+	height: 44px;
+
+	position: absolute;
+	top: 126px;
+	left: 560px;
+
+	border: 1px solid #D5CEAC;
+
+	background-color: #7C7c3f;
+
+	opacity: .3;
+}
+#spanCountHeader {
+	width: 200px;
+
+	position: absolute;
+	top: -320px;
+	left: 284px;
+
+	font-weight: bold;
+	font-size: 14px;
+	text-decoration: underline;
+
+	color: #333333;
+}
+#spanCount {
+	position: absolute;
+	top: -310px;
+	left: 320px;
+
+	font-weight: bold;
+	font-size: 90px;
+
+	color: #333333;
+}
+#whosCrib {
+	position: absolute;
+	top: -340px;
+	left: 0px;
+}

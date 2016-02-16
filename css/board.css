@@ -1,0 +1,62 @@
+#rectBackground {
+	fill: #F9F4CB;
+	fill-opacity: .7;
+}
+
+/* Board styles */
+#rectBoardBottom {
+	fill: #5b4d28;
+}
+
+/* Section styles */
+.rectSectionBottom {
+	fill: #A39266;
+	opacity: .5;
+
+	stroke: #333333;
+	stroke-width: 2;
+}
+.circleHole {
+	fill: #4A4537;
+
+	stroke: #333333;
+	stroke-width: 1;
+}
+.circleStartHole {
+	fill: #FFFFFF;
+	
+	stroke: #333333;
+	stroke-width: 1;
+}
+.circleFinishHole {
+	fill: #4A4537;
+	
+	stroke: #333333;
+	stroke-width: 1;
+}
+.lineSeparator {
+	stroke: #4A4537;
+	stroke-width: 1;
+}
+.textDisplay {
+	fill: #FFFFFF;
+	text-align: center;
+
+	opacity: .8;
+}
+
+/* Cards */
+.rectCardModel {
+	stroke: #4A4537;
+	stroke-width: 3;
+}
+.textCard {
+	font-weight: bold;
+	font-size: 20px;
+}
+.textCardRed {
+	fill: red;
+}
+.textCardBlack {
+	fill: black;
+}
