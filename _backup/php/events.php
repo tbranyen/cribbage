@@ -3,10 +3,6 @@
 	// Start events by throwing out some useless garbage text for safari... and opening new object stream
 	ob_start();
 
-	echo "this is useless data that is used so that safari doesn't have to wait a bajillion years to show up any data... utterly ridicuous if you ask me... i mean what game is steve jerbz playing anyways? I don't have time to wait around for this damn web bowser(intentional typo thx) to load this... is... ANNOYING! Seriously just when I thought i had started send ing enough data, this incredibly long paragraph still isn't enough!!!!!  okay i just tested my program again... guess what guyz? SYNTAX ERRORS.. Oh yeah because safari can totally parse blank lines into json... gg guys.. if i see another syntax error i don't know what i'll do... AND SUCCESS! and again this doesn't seem to work.  i'm going to add even more useless ramble text here in order to figure out why you won't work... lol this is so badd i hope it works now... srsly i cannot live any longer if safari refuses to cooperate.  i mean i almost use it exclusively... evne though there is a pretty pimp theme i have for firefox that makes it look identical... firefox 3s native gui sucks balls.<br />";
-	flush();
-	ob_flush();
-
 	// Chat properties
 	$GLOBALS["last_user_count"] = 0;
 	$GLOBALS["timestamp"] = time();
@@ -108,9 +104,12 @@
 			checkEndGame();
 		}
 
-		
-
-		flush(); ob_flush(); ob_end_flush();
+    // FIXME This doesn't work
+    while (ob_get_level() > 0) {
+      flush();
+      ob_flush();
+      ob_end_flush();
+    }
 
 		usleep(20000);
 	}

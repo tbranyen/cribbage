@@ -1,5 +1,5 @@
 <?php
-	session_start();
+  session_start();
 	ob_start();
 
 	// Make sure this shit expires
@@ -99,7 +99,6 @@
 		// Handle login
 		if ($logged_in == true) {			
 			// Handle session crap
-			session_start();
 			session_regenerate_id(true);
 			$_SESSION["UserID"] = $user_id;
 			$_SESSION["UserName"] = $username;
