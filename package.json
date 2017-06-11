@@ -1,0 +1,29 @@
+{
+  "name": "cribbage",
+  "version": "1.0.0",
+  "description": "Cribbage Game",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tbranyen/cribbage.git"
+  },
+  "keywords": [],
+  "author": "Tim Branyen",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tbranyen/cribbage/issues"
+  },
+  "homepage": "https://github.com/tbranyen/cribbage#readme",
+  "dependencies": {
+    "diffhtml": "^1.0.0-beta.4",
+    "diffhtml-middleware-logger": "^1.0.0-beta.4",
+    "diffhtml-react-compat": "^1.0.0-beta.4",
+    "styled-components": "^2.0.1"
+  }
+}

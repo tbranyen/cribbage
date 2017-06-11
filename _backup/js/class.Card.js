@@ -68,7 +68,7 @@ function Card_getNumericalIdentifier() {
 
 // Return a card array
 function Card_getCard() {
-	return new Array(this.identifier, this.suite);
+	return new Array(this.identifier, this.suit);
 }
 
 // Return card value

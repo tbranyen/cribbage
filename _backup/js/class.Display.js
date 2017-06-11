@@ -34,7 +34,7 @@ function Display() {
 	this.clearInformation = Display_clearInformation;
 	this.clearErrors = Display_clearErrors;
 	this.clearAll = Display_clearAll;
-	
+
 	// Private methods
 	this.clear = Display_clear;
 	this.removeElement = Display_removeElement;
@@ -80,7 +80,7 @@ function Display_buildPage() {
 
 	// Add to svg container div
 	displayContent.appendChild(buttonRegister);
-	
+
 	// Create information background
 	var rectInformation = document.createElementNS(this.svgns, "rect");
 	rectInformation.setAttribute("id", "rectInformation");
@@ -252,7 +252,7 @@ function Display_showForgotPassword() {
 	aReturn.setAttribute("class", "aReturn");
 	aReturn.appendChild(document.createTextNode("return to introduction."));
 	// Add to information
-	divInformation.appendChild(aReturn);	
+	divInformation.appendChild(aReturn);
 }
 
 // Show register
@@ -335,7 +335,7 @@ function Display_showRegister() {
 	imgSecurityCode.setAttribute("id", "imgSecurityCode");
 	imgSecurityCode.setAttribute("border", "0");
 	imgSecurityCode.setAttribute("src", "php/getImg.php");
-	// Add to information	
+	// Add to information
 	divInformation.appendChild(imgSecurityCode);
 		// Create textbox
 		var inputSecurityCode = document.createElementNS(this.xhtmlns, "input");
@@ -368,7 +368,7 @@ function Display_showRegister() {
 	aReturn.setAttribute("class", "aReturn");
 	aReturn.appendChild(document.createTextNode("return to introduction."));
 	// Add to information
-	divInformation.appendChild(aReturn);	
+	divInformation.appendChild(aReturn);
 }
 
 // Display register thank you
@@ -390,7 +390,7 @@ function Display_showThankYou() {
 	// Display thank you information
 	var divThankYouInformation = document.createElementNS(this.xhtmlns, "div");
 	divThankYouInformation.style.width = "100%";
-	
+
 	divThankYouInformation.appendChild(document.createTextNode("Your account information has been emailed to you.  You are now able to login and enjoy the game of Cribbage!"));
 	// Add to information
 	divInformation.appendChild(divThankYouInformation);
@@ -405,7 +405,7 @@ function Display_showThankYou() {
 	aReturn.setAttribute("class", "aReturn");
 	aReturn.appendChild(document.createTextNode("return to introduction."));
 	// Add to information
-	divInformation.appendChild(aReturn);	
+	divInformation.appendChild(aReturn);
 }
 
 // Add users to the list
@@ -659,7 +659,7 @@ function Display_createCard(_card, _x, _y, _width, _clickable) {
 	var _fontY = Math.round(_width*.24);
 
 	if(displayCard != null) {
-		
+
 		// Create card group to store all card related shit
 		var gCard = document.createElementNS(this.svgns, "g");
 		gCard.setAttribute("id", displayCard.getNumericalIdentifier()+"_"+displayCard.getSuit());
@@ -699,31 +699,6 @@ function Display_createCard(_card, _x, _y, _width, _clickable) {
 			textCardIdentifier.setAttribute("y", _fontY);
 			textCardIdentifier.appendChild(document.createTextNode(displayCard.getIdentifier()));
 
-			// Show card suit graphic
-			var textCardSuitGraphic = document.createElementNS(this.svgns, "text");
-			textCardSuitGraphic.setAttribute("font-weight", "bold");
-			textCardSuitGraphic.setAttribute("font-size", _graphicSize);
-			if(displayCard.getSuit() == "diamond" || displayCard.getSuit() == "heart")
-				textCardSuitGraphic.setAttribute("fill", "#FF0000");
-			else
-				textCardSuitGraphic.setAttribute("fill", "#000000");
-			textCardSuitGraphic.setAttribute("x", _fontX);
-			textCardSuitGraphic.setAttribute("y", _fontY*2);
-
-			switch(displayCard.getSuit()) {
-				case "heart":
-					textCardSuitGraphic.appendChild(document.createTextNode("♥"));
-				break;
-				case "spade":
-					textCardSuitGraphic.appendChild(document.createTextNode("♠"));
-				break;
-				case "diamond":
-					textCardSuitGraphic.appendChild(document.createTextNode("♦"));
-				break;
-				case "club":
-					textCardSuitGraphic.appendChild(document.createTextNode("♣"));
-				break;
-			}
 
 			// Show card identifier bottom
 			var textCardIdentifierBottom = document.createElementNS(this.svgns, "text");
@@ -735,7 +710,7 @@ function Display_createCard(_card, _x, _y, _width, _clickable) {
 				textCardIdentifierBottom.setAttribute("fill", "#000000");
 			textCardIdentifierBottom.setAttribute("x", _width-(_fontX*2.3));
 			textCardIdentifierBottom.setAttribute("y", _height-(_fontY*.65));
-			textCardIdentifierBottom.appendChild(document.createTextNode(displayCard.getIdentifier()));	
+			textCardIdentifierBottom.appendChild(document.createTextNode(displayCard.getIdentifier()));
 
 			// Show card suit graphic bottom
 			var textCardSuitGraphicBottom = document.createElementNS(this.svgns, "text");
@@ -775,7 +750,7 @@ function Display_createCard(_card, _x, _y, _width, _clickable) {
 							if((selectedCards[i].getNumericalIdentifier()+1) == tempCard.getNumericalIdentifier())
 								selectedCards.splice(i,1);
 						}
-					
+
 						this.setAttribute("id", tempCard.getNumericalIdentifier()+"_"+tempCard.getSuit()+"_"+"on");
 						var transform = this.getAttribute("transform");
 						transform = transform.substring(transform.indexOf("(")+1, transform.indexOf(")"));
@@ -796,7 +771,7 @@ function Display_createCard(_card, _x, _y, _width, _clickable) {
 			//}
 		}
 
-	
+
 		// Put it all together
 		gCard.appendChild(rectCardBackground);
 		gCard.appendChild(rectCardForeground);
