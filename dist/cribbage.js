@@ -105,7 +105,7 @@ function createTree(input, attributes, childNodes) {
 
   // If the first argument is an array, we assume this is a DOM fragment and
   // the array are the childNodes.
-  if (isArray(input)) {
+  if (typeof input === 'object' && input.length) {
     childNodes = [];
 
     for (var i = 0; i < input.length; i++) {
@@ -1037,10 +1037,11 @@ function patchNode(patches, state) {
       // Normal attribute value.
       if (!isObject && !isFunction && name) {
         var noValue = value === null || value === undefined;
+        // Runtime checking if the property can be set.
         var blacklistName = vTree.nodeName + '-' + name;
 
-        // Allow the user to find the real value in the DOM Node as a
-        // property.
+        // If the property has not been blacklisted then use try/catch to try
+        // and set it.
         if (!blacklist.has(blacklistName)) {
           try {
             domNode[name] = value;
@@ -1051,7 +1052,6 @@ function patchNode(patches, state) {
 
         // Set the actual attribute, this will ensure attributes like
         // `autofocus` aren't reset by the property call above.
-        //domNode.setAttribute(name, noValue ? '' : value);
         domNode.setAttribute(name, noValue ? '' : value);
       }
       // Support patching an object representation of the style object.
@@ -1744,14 +1744,19 @@ reactLikeComponentTask.syncTreeHook = function (oldTree, newTree) {
         if (oldInstance.shouldComponentUpdate()) {
           renderTree = oldInstance.render(props, oldInstance.state);
         }
+      } else if (instance && instance.render) {
+        renderTree = createTree(instance.render(props, instance.state));
       } else {
-        renderTree = createTree(instance && instance.render ? instance.render(props, instance.state) : newCtor(props));
+        renderTree = createTree(newCtor(props));
       }
 
+      // Nothing was rendered so continue.
       if (!renderTree) {
         continue;
       }
 
+      // Replace the rendered value into the new tree, if rendering a fragment
+      // this will inject the contents into the parent.
       if (renderTree.nodeType === 11) {
         newTree.childNodes = [].concat( renderTree.childNodes );
 
@@ -1759,15 +1764,17 @@ reactLikeComponentTask.syncTreeHook = function (oldTree, newTree) {
           ComponentTreeCache.set(instance, oldTree);
           InstanceCache.set(oldTree, instance);
         }
-      } else {
-        // Build a new tree from the render, and use this as the current tree.
-        newTree.childNodes[i] = renderTree;
-
-        if (instance) {
-          ComponentTreeCache.set(instance, renderTree);
-          InstanceCache.set(renderTree, instance);
-        }
       }
+      // If the rendered value is a single element use it as the root for
+      // diffing.
+      else {
+          newTree.childNodes[i] = renderTree;
+
+          if (instance) {
+            ComponentTreeCache.set(instance, renderTree);
+            InstanceCache.set(renderTree, instance);
+          }
+        }
     }
   }
 
@@ -1905,8 +1912,6 @@ var _vtree7 = createTree('#text', null, "\n            ");
 var _vtree8 = createTree('#text', null, "\n\n            ");
 var _vtree9 = createTree('#text', null, "\n          ");
 
-function _objectWithoutProperties(obj, keys) { var target = {}; for (var i in obj) { if (keys.indexOf(i) >= 0) { continue; } if (!Object.prototype.hasOwnProperty.call(obj, i)) { continue; } target[i] = obj[i]; } return target; }
-
 var Card = (function (Component$$1) {
   function Card(props) {
     Component$$1.call(this, props);
@@ -1919,17 +1924,16 @@ var Card = (function (Component$$1) {
   Card.prototype.constructor = Card;
 
   Card.prototype.render = function render () {
-    var _props = this.props;
-    var x = _props.x;
-    var y = _props.y;
-    var width = _props.width;
-    var facing = _props.facing;
-    var value = _props.value;
-    var children = _props.children;
-    var rest = _objectWithoutProperties(_props, ['x', 'y', 'width', 'facing', 'value', 'children']);
-    var ref = this;
-    var suit = ref.suit;
-    var label = ref.label;
+    var ref = this.props;
+    var x = ref.x;
+    var y = ref.y;
+    var width = ref.width;
+    var facing = ref.facing;
+    var value = ref.value;
+    var children = ref.children;
+    var ref$1 = this;
+    var suit = ref$1.suit;
+    var label = ref$1.label;
     var height = width * 1.4;
     var fontSize = Math.round(width * 0.20);
     var graphicSize = Math.round(width * 0.30);
@@ -2101,20 +2105,10 @@ function spiral(n) {
 }
 
 var modifier = 1;
-var lastUpdate = Date.now();
+var deck = new Deck(52);
 
 function update(a) {
-  var now = Date.now();
-
-  if (a !== 1 && now - lastUpdate < 10) {
-    return;
-  }
-
-  lastUpdate = now;
-
-  var deck = new Deck(52);
-
-  if (a > 200) {
+  if (a > 300) {
     modifier = -1;
   } else if (a === 1) {
     modifier = 1;
