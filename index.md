@@ -7,8 +7,6 @@
   <meta name="theme-color" content="#B28F79">
 </head>
 
-<link rel="stylesheet" href="theme.css">
-
 # Menu
 
 - [New Game](/new)
@@ -29,4 +27,4 @@
   <g class="playing-card"></g>
 </svg>
 
-<script src="dist/cribbage.js"></script>
+<script src="dist/cribbage.min.js"></script>
