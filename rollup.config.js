@@ -15,7 +15,7 @@ export const entry = 'lib/index.js';
 export const sourceMap = false;
 
 export const targets = [{
-  dest: 'dist/todomvc.js',
+  dest: 'dist/cribbage.js',
   format: 'umd',
 }];
 
@@ -31,6 +31,7 @@ export const plugins = [
     Extensions: ['js'],
   }),
   babel(),
+  buble(),
   nodeResolve({ jsnext: true }),
   commonjs(),
   Visualizer({ filename: './dist/build-size.html' }),

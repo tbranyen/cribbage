@@ -16,10 +16,29 @@ function Deck(_numcards) {
 // Shuffle cards
 function Deck_shuffle() {
 	// Assign random very high values
-	for (var i=0; i<this.numCards; i++) {		this.shuffledCards[i] = Math.round(Math.random()*10000);	}
+	for (var i=0; i<this.numCards; i++) {
+		this.shuffledCards[i] = Math.round(Math.random()*10000);
+	}
 
 	var tempShuffledCards = new Array();
-	// Find the largest random number	var tempLargeNumber = 0;	var tempLargeNumberIndex = 0;	for (var i=0; i<this.numCards; i++) {		tempLargeNumber = 0;			for (var n=0; n<this.numCards; n++) {			if (tempLargeNumber < this.shuffledCards[n]) {				tempLargeNumber = this.shuffledCards[n];				tempLargeNumberIndex = n;			}		}		this.shuffledCards[tempLargeNumberIndex] = 0;		tempShuffledCards[i] = tempLargeNumberIndex;	}	this.shuffledCards = tempShuffledCards;
+
+	// Find the largest random number
+	var tempLargeNumber = 0;
+	var tempLargeNumberIndex = 0;
+
+	for (var i=0; i < this.numCards; i++) {
+		tempLargeNumber = 0;
+
+		for (var n=0; n<this.numCards; n++) {
+			if (tempLargeNumber < this.shuffledCards[n]) {
+				tempLargeNumber = this.shuffledCards[n];
+				tempLargeNumberIndex = n;
+			}
+		}
+		this.shuffledCards[tempLargeNumberIndex] = 0;
+		tempShuffledCards[i] = tempLargeNumberIndex;
+	}
+	this.shuffledCards = tempShuffledCards;
 }
 
 // Get shuffled cards

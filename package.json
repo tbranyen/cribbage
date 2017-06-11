@@ -7,7 +7,11 @@
     "lib": "lib"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "prepublish": "npm run min",
+    "clean": "rm -rf dist/* && mkdir -p dist",
+    "min": "NODE_ENV=production npm run build",
+    "build": "rollup -c rollup.config.js && uglifyjs dist/cribbage.js -o dist/cribbage.min.js -m -c",
+    "watch": "rollup -c rollup.config.js -w"
   },
   "repository": {
     "type": "git",
@@ -25,5 +29,25 @@
     "diffhtml-middleware-logger": "^1.0.0-beta.4",
     "diffhtml-react-compat": "^1.0.0-beta.4",
     "styled-components": "^2.0.1"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.24.1",
+    "babel-plugin-transform-class-properties": "^6.22.0",
+    "babel-plugin-transform-object-rest-spread": "^6.22.0",
+    "babel-plugin-transform-diffhtml": "^1.0.0-beta.4",
+    "babel-plugin-transform-react-remove-prop-types": "^0.4.5",
+    "babel-preset-diffhtml-imports": "^1.0.0-beta.4",
+    "babel-preset-es2015-rollup": "^3.0.0",
+    "rollup": "^0.41.4",
+    "rollup-plugin-babel": "^2.7.1",
+    "rollup-plugin-buble": "^0.15.0",
+    "rollup-plugin-commonjs": "^8.0.2",
+    "rollup-plugin-ignore": "^1.0.3",
+    "rollup-plugin-import-alias": "^1.0.3",
+    "rollup-plugin-node-resolve": "^2.0.0",
+    "rollup-plugin-replace": "^1.1.1",
+    "rollup-plugin-visualizer": "^0.2.0",
+    "rollup-watch": "^3.2.2",
+    "uglify-js": "^3.0.15"
   }
 }

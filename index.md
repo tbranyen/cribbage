@@ -1,3 +1,12 @@
+<head>
+  <title>Cribbage Game</title>
+  <link rel="stylesheet" href="theme.css">
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#B28F79">
+</head>
+
 <link rel="stylesheet" href="theme.css">
 
 # Menu
@@ -20,8 +29,4 @@
   <g class="playing-card"></g>
 </svg>
 
-<script src="node_modules/diffhtml/dist/diffhtml.js"></script>
-<script src="node_modules/diffhtml-components/dist/component.js"></script>
-<script src="node_modules/diffhtml-middleware-logger/dist/logger.js"></script>
-<script src="lib/components/card.js"></script>
-<script src="lib/app.js"></script>
+<script src="dist/cribbage.js"></script>

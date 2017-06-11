@@ -174,10 +174,10 @@ function registerUser() {
 			var responseText = arguments[0];
 			try {
 				var json = eval('(' + responseText + ')');
-			
+
 				if(json.status == "success")
 					showThankYou();
-		
+
 				display.showErrors(json.errors);
 			}
 			catch(e) {
@@ -207,7 +207,7 @@ function loginUser() {
 			var responseText = arguments[0];
 			try {
 				var json = eval('(' + responseText + ')');
-			
+
 				if(json.status == "success") {
 					// Show logout
 					document.getElementById("logout").style.display = "block";
@@ -223,7 +223,7 @@ function loginUser() {
 					// Take to lobby
 					showLobby();
 				}
-		
+
 				display.showErrors(json.errors);
 			}
 			catch(e) {
@@ -242,11 +242,11 @@ function loginUser() {
 function logoutUser() {
 	// Remove user from chat
 	var chatRemoveRequest = new AjaxRequest("php/chat.php", "GET", false, "remove");
-	chatRemoveRequest.callBack = function() {}	chatRemoveRequest.connect();
+	chatRemoveRequest.callBack = function() {}	chatRemoveRequest.connect();
 
 	// Remove user from system
 	var userRemoveRequest = new AjaxRequest("php/user.php", "GET", false, "logout");
-	userRemoveRequest.callBack = function() {}	userRemoveRequest.connect();
+	userRemoveRequest.callBack = function() {}	userRemoveRequest.connect();
 
 	window.location.reload(false);
 }
@@ -373,7 +373,7 @@ function parseEvent(_event) {
 							invite_name = json.from;
 							invite_game_id = json.gameid;
 							invite_game_chat_id = json.gamechatid;
-	
+
 							// Show invite window
 							display.showInvite(invite_name);
 
@@ -389,10 +389,10 @@ function parseEvent(_event) {
 								var ajaxRequest = new AjaxRequest("php/chat.php", "GET", false, "remove");
 								ajaxRequest.callBack = function() {}
 								ajaxRequest.connect();
-							
+
 								// Set up the game
 								var setupRequest = new AjaxRequest("php/game.php", "GET", false, "setupgame&gameid="+game_id+"&gamechatid="+game_chat_id+"&player2="+opponent_name);
-								setupRequest.callBack = function() {}								setupRequest.connect();
+								setupRequest.callBack = function() {}								setupRequest.connect();
 
 								// Shuffle cards and sync decks
 								deck.shuffle();
@@ -400,7 +400,7 @@ function parseEvent(_event) {
 
 								// Set dealer
 								var dealerRequest = new AjaxRequest("php/game.php", "GET", false, "setdealer&dealer="+Math.round(Math.random(1)));
-								dealerRequest.callBack = function() {}								dealerRequest.connect();
+								dealerRequest.callBack = function() {}								dealerRequest.connect();
 
 								setUpGame();
 							}
@@ -426,7 +426,7 @@ function parseEvent(_event) {
 								turnRequest.callBack = function() {}
 								turnRequest.connect();
 								display.showGameMessage("You are dealer!");
-								
+
 								document.getElementById("whosCrib").style.opacity = "1";
 							}
 							else {
@@ -622,21 +622,21 @@ function changeTurn() {
 function syncDeck() {
 	// Send back cards
 	var deckRequest = new AjaxRequest("php/game.php", "GET", false, "setdeck&cards="+deck.getShuffledCards());
-	deckRequest.callBack = function() {}	deckRequest.connect();
+	deckRequest.callBack = function() {}	deckRequest.connect();
 }
 
 // Add to the stack
 function addStack(_value) {
 	// Send back cards
 	var stackRequest = new AjaxRequest("php/game.php", "GET", false, "setstack&card="+_value);
-	stackRequest.callBack = function() {}	stackRequest.connect();
+	stackRequest.callBack = function() {}	stackRequest.connect();
 }
 
 // Start game!
 function showGame() {
 	if (currentPage != "game") {
 		currentPage = "game";
-	
+
 		// Hide stuff
 		display.clearAll();
 
@@ -690,7 +690,7 @@ function sayToChat(event) {
 function sendInvite(_to) {
 	invite_user_name = _to;
 	var inviteRequest = new AjaxRequest("php/game.php", "GET", false, "invite&to="+_to);
-	inviteRequest.callBack = function() {}	inviteRequest.connect();
+	inviteRequest.callBack = function() {}	inviteRequest.connect();
 }
 
 // Respond to invite
@@ -715,11 +715,11 @@ function respondToInvite(_status) {
 
 		// Change game id and chat id in sessions
 		var changeRequest = new AjaxRequest("php/game.php", "GET", false, "setvariables&gameid="+game_id+"&gamechatid="+game_chat_id);
-		changeRequest.callBack = function() {}		changeRequest.connect();
+		changeRequest.callBack = function() {}		changeRequest.connect();
 
 		// Send off status | confirm
 		var statusRequest = new AjaxRequest("php/game.php", "GET", false, "respond&status=yes&user="+name+"&gameid="+invite_game_id+"&gamechatid="+invite_game_chat_id);
-		statusRequest.callBack = function() {}		statusRequest.connect();
+		statusRequest.callBack = function() {}		statusRequest.connect();
 
 		// Set up da game
 		setUpGame();
@@ -727,7 +727,7 @@ function respondToInvite(_status) {
 	else {
 		// Send off status | deny
 		var statusRequest = new AjaxRequest("php/game.php", "GET", false, "respond&status=no&user="+name);
-		statusRequest.callBack = function() {}		statusRequest.connect();
+		statusRequest.callBack = function() {}		statusRequest.connect();
 	}
 }
 
@@ -745,7 +745,7 @@ function toCrib() {
 
 		// Send crib
 		var statusRequest = new AjaxRequest("php/game.php", "GET", false, "addcrib&card1="+card1+"&card2="+card2);
-		statusRequest.callBack = function() {}		statusRequest.connect();
+		statusRequest.callBack = function() {}		statusRequest.connect();
 
 		selectedCards = new Array();
 
@@ -767,7 +767,7 @@ function playCard() {
 			var card = selectedCards[0];
 			if(card.getValue()+game.getCount() <= 31) {
 				game.removeCardFromHand(card);
-				
+
 				// Show big card
 				displayLargeCard(card);
 
