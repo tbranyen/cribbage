@@ -105,7 +105,7 @@ function createTree(input, attributes, childNodes) {
 
   // If the first argument is an array, we assume this is a DOM fragment and
   // the array are the childNodes.
-  if (typeof input === 'object' && input.length) {
+  if (isArray(input)) {
     childNodes = [];
 
     for (var i = 0; i < input.length; i++) {
@@ -294,6 +294,12 @@ var namespace = 'http://www.w3.org/2000/svg';
 function createNode(vTree, ownerDocument, isSVG) {
   if ( ownerDocument === void 0 ) ownerDocument = document;
 
+  if (process$1.env.NODE_ENV !== 'production') {
+    if (!vTree) {
+      throw new Error('Missing VTree when trying to create DOM Node');
+    }
+  }
+
   var existingNode = NodeCache.get(vTree);
 
   // If the DOM Node was already created, reuse the existing node.
@@ -302,6 +308,7 @@ function createNode(vTree, ownerDocument, isSVG) {
   }
 
   var nodeName = vTree.nodeName;
+  var rawNodeName = vTree.rawNodeName;
   var childNodes = vTree.childNodes; if ( childNodes === void 0 ) childNodes = [];
   isSVG = isSVG || nodeName === 'svg';
 
@@ -328,11 +335,11 @@ function createNode(vTree, ownerDocument, isSVG) {
       }
       // Support SVG.
       else if (isSVG) {
-          domNode = ownerDocument.createElementNS(namespace, nodeName);
+          domNode = ownerDocument.createElementNS(namespace, rawNodeName);
         }
         // If not a Text or SVG Node, then create with the standard method.
         else {
-            domNode = ownerDocument.createElement(nodeName);
+            domNode = ownerDocument.createElement(rawNodeName);
           }
   }
 
@@ -501,15 +508,6 @@ var internals = Object.assign({
   process: process$1
 }, caches);
 
-/**
- * If diffHTML is rendering anywhere asynchronously, we need to wait until it
- * completes before this render can be executed. This sets up the next
- * buffer, if necessary, which serves as a Boolean determination later to
- * `bufferSet`.
- *
- * @param {Object} nextTransaction - The Transaction instance to schedule
- * @return {Boolean} - Value used to terminate a transaction render flow
- */
 function schedule(transaction) {
   // The state is a global store which is shared by all like-transactions.
   var state = transaction.state;
@@ -625,6 +623,17 @@ function syncTree(oldTree, newTree, patches) {
   // Reuse these maps, it's more efficient to clear them than to re-create.
   var keysLookup = { old: new Map(), new: new Map() };
 
+  if (process$1.env.NODE_ENV !== 'production') {
+    if (newTree === empty) {
+      throw new Error('Missing new Virtual Tree to sync changes from');
+    }
+
+    if (!isEmpty && oldNodeName !== newNodeName && !isFragment) {
+      throw new Error(("Sync failure, cannot compare " + newNodeName + " with " + oldNodeName));
+    }
+  }
+
+  // Reduce duplicate logic by condensing old and new operations in a loop.
   for (var i = 0; i < keyNames.length; i++) {
     var keyName = keyNames[i];
     var map = keysLookup[keyName];
@@ -741,6 +750,12 @@ function syncTree(oldTree, newTree, patches) {
 
   // If we somehow end up comparing two totally different kinds of elements,
   // we'll want to raise an error to let the user know something is wrong.
+  if (process$1.env.NODE_ENV !== 'production') {
+    if (!isEmpty && oldNodeName !== newNodeName && !isFragment) {
+      throw new Error(("Sync failure, cannot compare " + newNodeName + " with " + oldNodeName));
+    }
+  }
+
   var newChildNodes = newTree.childNodes;
 
   // Scan all childNodes for attribute changes.
@@ -929,17 +944,34 @@ function syncTrees(transaction) {
   measure('sync trees');
 }
 
-// Available transition states.
 var stateNames = ['attached', 'detached', 'replaced', 'attributeChanged', 'textChanged'];
 
 // Sets up the states up so we can add and remove events from the sets.
 stateNames.forEach(function (stateName) { return TransitionCache.set(stateName, new Set()); });
 
 function addTransitionState(stateName, callback) {
+  if (process$1.env.NODE_ENV !== 'production') {
+    if (!stateName || !stateNames.includes(stateName)) {
+      throw new Error(("Invalid state name '" + stateName + "'"));
+    }
+
+    if (!callback) {
+      throw new Error('Missing transition state callback');
+    }
+  }
+
   TransitionCache.get(stateName).add(callback);
 }
 
 function removeTransitionState(stateName, callback) {
+  if (process$1.env.NODE_ENV !== 'production') {
+    // Only validate the stateName if the caller provides one.
+    if (stateName && !stateNames.includes(stateName)) {
+      throw new Error(("Invalid state name '" + stateName + "'"));
+    }
+  }
+
+  // Remove all transition callbacks from state.
   if (!callback && stateName) {
     TransitionCache.get(stateName).clear();
   }
@@ -1235,12 +1267,6 @@ function patchNode(patches, state) {
   return promises;
 }
 
-/**
- * Processes a set of patches onto a tracked DOM Node.
- *
- * @param {Object} node - DOM Node to process patchs on
- * @param {Array} patches - Contains patch objects
- */
 function patch(transaction) {
   var domNode = transaction.domNode;
   var state = transaction.state;
@@ -1359,7 +1385,19 @@ Transaction.flow = function flow (transaction, tasks) {
 };
 
 Transaction.assert = function assert (transaction) {
-  
+  if (process$1.env.NODE_ENV !== 'production') {
+    if (typeof transaction.domNode !== 'object') {
+      throw new Error('Transaction requires a DOM Node mount point');
+    }
+
+    if (transaction.aborted && transaction.completed) {
+      throw new Error('Transaction was previously aborted');
+    }
+
+    if (transaction.completed) {
+      throw new Error('Transaction was previously completed');
+    }
+  }
 };
 
 Transaction.invokeMiddleware = function invokeMiddleware (transaction) {
@@ -1378,6 +1416,10 @@ Transaction.invokeMiddleware = function invokeMiddleware (transaction) {
 };
 
 Transaction.prototype.start = function start () {
+  if (process$1.env.NODE_ENV !== 'production') {
+    Transaction.assert(this);
+  }
+
   var ref = this;
     var domNode = ref.domNode;
     var measure = ref.state.measure;
@@ -1496,6 +1538,12 @@ var CreateNodeHookCache$1 = MiddlewareCache.CreateNodeHookCache;
 var SyncTreeHookCache$1 = MiddlewareCache.SyncTreeHookCache;
 
 function use(middleware) {
+  if (process$1.env.NODE_ENV !== 'production') {
+    if (typeof middleware !== 'function') {
+      throw new Error('Middleware must be a function');
+    }
+  }
+
   var subscribe = middleware.subscribe;
   var unsubscribe = middleware.unsubscribe;
   var createTreeHook = middleware.createTreeHook;
@@ -1613,8 +1661,738 @@ Deck.prototype.atPosition = function atPosition (index) {
 
 (typeof window !== 'undefined' ? window : global).process = Internals.process;
 
-var ComponentTreeCache = new WeakMap();
-var InstanceCache = new WeakMap();
+var process$2 = Internals.process;
+
+function createCommonjsModule(fn, module) {
+	return module = { exports: {} }, fn(module, module.exports), module.exports;
+}
+
+function makeEmptyFunction(arg) {
+  return function () {
+    return arg;
+  };
+}
+
+/**
+ * This function accepts and discards inputs; it has no side effects. This is
+ * primarily useful idiomatically for overridable function endpoints which
+ * always need to be callable, since JS lacks a null-call idiom ala Cocoa.
+ */
+var emptyFunction = function emptyFunction() {};
+
+emptyFunction.thatReturns = makeEmptyFunction;
+emptyFunction.thatReturnsFalse = makeEmptyFunction(false);
+emptyFunction.thatReturnsTrue = makeEmptyFunction(true);
+emptyFunction.thatReturnsNull = makeEmptyFunction(null);
+emptyFunction.thatReturnsThis = function () {
+  return this;
+};
+emptyFunction.thatReturnsArgument = function (arg) {
+  return arg;
+};
+
+var emptyFunction_1 = emptyFunction;
+
+/**
+ * Copyright (c) 2013-present, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ *
+ */
+
+var validateFormat = function validateFormat(format) {};
+
+if (process.env.NODE_ENV !== 'production') {
+  validateFormat = function validateFormat(format) {
+    if (format === undefined) {
+      throw new Error('invariant requires an error message argument');
+    }
+  };
+}
+
+function invariant(condition, format, a, b, c, d, e, f) {
+  validateFormat(format);
+
+  if (!condition) {
+    var error;
+    if (format === undefined) {
+      error = new Error('Minified exception occurred; use the non-minified dev environment ' + 'for the full error message and additional helpful warnings.');
+    } else {
+      var args = [a, b, c, d, e, f];
+      var argIndex = 0;
+      error = new Error(format.replace(/%s/g, function () {
+        return args[argIndex++];
+      }));
+      error.name = 'Invariant Violation';
+    }
+
+    error.framesToPop = 1; // we don't care about invariant's own frame
+    throw error;
+  }
+}
+
+var invariant_1 = invariant;
+
+var warning = emptyFunction_1;
+
+if (process.env.NODE_ENV !== 'production') {
+  (function () {
+    var printWarning = function printWarning(format) {
+      var arguments$1 = arguments;
+
+      for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+        args[_key - 1] = arguments$1[_key];
+      }
+
+      var argIndex = 0;
+      var message = 'Warning: ' + format.replace(/%s/g, function () {
+        return args[argIndex++];
+      });
+      if (typeof console !== 'undefined') {
+        console.error(message);
+      }
+      try {
+        // --- Welcome to debugging React ---
+        // This error was thrown as a convenience so that you can use this stack
+        // to find the callsite that caused this warning to fire.
+        throw new Error(message);
+      } catch (x) {}
+    };
+
+    warning = function warning(condition, format) {
+      var arguments$1 = arguments;
+
+      if (format === undefined) {
+        throw new Error('`warning(condition, format, ...args)` requires a warning ' + 'message argument');
+      }
+
+      if (format.indexOf('Failed Composite propType: ') === 0) {
+        return; // Ignore CompositeComponent proptype check.
+      }
+
+      if (!condition) {
+        for (var _len2 = arguments.length, args = Array(_len2 > 2 ? _len2 - 2 : 0), _key2 = 2; _key2 < _len2; _key2++) {
+          args[_key2 - 2] = arguments$1[_key2];
+        }
+
+        printWarning.apply(undefined, [format].concat(args));
+      }
+    };
+  })();
+}
+
+var warning_1 = warning;
+
+/**
+ * Copyright 2013-present, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ */
+
+var ReactPropTypesSecret = 'SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED';
+
+var ReactPropTypesSecret_1 = ReactPropTypesSecret;
+
+if (process.env.NODE_ENV !== 'production') {
+  var invariant$1 = invariant_1;
+  var warning$1 = warning_1;
+  var ReactPropTypesSecret$1 = ReactPropTypesSecret_1;
+  var loggedTypeFailures = {};
+}
+
+/**
+ * Assert that the values match with the type specs.
+ * Error messages are memorized and will only be shown once.
+ *
+ * @param {object} typeSpecs Map of name to a ReactPropType
+ * @param {object} values Runtime values that need to be type-checked
+ * @param {string} location e.g. "prop", "context", "child context"
+ * @param {string} componentName Name of the component for error messages.
+ * @param {?Function} getStack Returns the component stack.
+ * @private
+ */
+function checkPropTypes(typeSpecs, values, location, componentName, getStack) {
+  if (process.env.NODE_ENV !== 'production') {
+    for (var typeSpecName in typeSpecs) {
+      if (typeSpecs.hasOwnProperty(typeSpecName)) {
+        var error;
+        // Prop type validation may throw. In case they do, we don't want to
+        // fail the render phase where it didn't fail before. So we log it.
+        // After these have been cleaned up, we'll let them throw.
+        try {
+          // This is intentionally an invariant that gets caught. It's the same
+          // behavior as without this statement except with a better message.
+          invariant$1(typeof typeSpecs[typeSpecName] === 'function', '%s: %s type `%s` is invalid; it must be a function, usually from ' + 'React.PropTypes.', componentName || 'React class', location, typeSpecName);
+          error = typeSpecs[typeSpecName](values, typeSpecName, componentName, location, null, ReactPropTypesSecret$1);
+        } catch (ex) {
+          error = ex;
+        }
+        warning$1(!error || error instanceof Error, '%s: type specification of %s `%s` is invalid; the type checker ' + 'function must return `null` or an `Error` but returned a %s. ' + 'You may have forgotten to pass an argument to the type checker ' + 'creator (arrayOf, instanceOf, objectOf, oneOf, oneOfType, and ' + 'shape all require an argument).', componentName || 'React class', location, typeSpecName, typeof error);
+        if (error instanceof Error && !(error.message in loggedTypeFailures)) {
+          // Only monitor this failure once because there tends to be a lot of the
+          // same error.
+          loggedTypeFailures[error.message] = true;
+
+          var stack = getStack ? getStack() : '';
+
+          warning$1(false, 'Failed %s type: %s%s', location, error.message, stack != null ? stack : '');
+        }
+      }
+    }
+  }
+}
+
+var checkPropTypes_1 = checkPropTypes;
+
+var factoryWithTypeCheckers = function (isValidElement, throwOnDirectAccess) {
+  /* global Symbol */
+  var ITERATOR_SYMBOL = typeof Symbol === 'function' && Symbol.iterator;
+  var FAUX_ITERATOR_SYMBOL = '@@iterator'; // Before Symbol spec.
+
+  /**
+   * Returns the iterator method function contained on the iterable object.
+   *
+   * Be sure to invoke the function with the iterable as context:
+   *
+   *     var iteratorFn = getIteratorFn(myIterable);
+   *     if (iteratorFn) {
+   *       var iterator = iteratorFn.call(myIterable);
+   *       ...
+   *     }
+   *
+   * @param {?object} maybeIterable
+   * @return {?function}
+   */
+  function getIteratorFn(maybeIterable) {
+    var iteratorFn = maybeIterable && (ITERATOR_SYMBOL && maybeIterable[ITERATOR_SYMBOL] || maybeIterable[FAUX_ITERATOR_SYMBOL]);
+    if (typeof iteratorFn === 'function') {
+      return iteratorFn;
+    }
+  }
+
+  /**
+   * Collection of methods that allow declaration and validation of props that are
+   * supplied to React components. Example usage:
+   *
+   *   var Props = require('ReactPropTypes');
+   *   var MyArticle = React.createClass({
+   *     propTypes: {
+   *       // An optional string prop named "description".
+   *       description: Props.string,
+   *
+   *       // A required enum prop named "category".
+   *       category: Props.oneOf(['News','Photos']).isRequired,
+   *
+   *       // A prop named "dialog" that requires an instance of Dialog.
+   *       dialog: Props.instanceOf(Dialog).isRequired
+   *     },
+   *     render: function() { ... }
+   *   });
+   *
+   * A more formal specification of how these methods are used:
+   *
+   *   type := array|bool|func|object|number|string|oneOf([...])|instanceOf(...)
+   *   decl := ReactPropTypes.{type}(.isRequired)?
+   *
+   * Each and every declaration produces a function with the same signature. This
+   * allows the creation of custom validation functions. For example:
+   *
+   *  var MyLink = React.createClass({
+   *    propTypes: {
+   *      // An optional string or URI prop named "href".
+   *      href: function(props, propName, componentName) {
+   *        var propValue = props[propName];
+   *        if (propValue != null && typeof propValue !== 'string' &&
+   *            !(propValue instanceof URI)) {
+   *          return new Error(
+   *            'Expected a string or an URI for ' + propName + ' in ' +
+   *            componentName
+   *          );
+   *        }
+   *      }
+   *    },
+   *    render: function() {...}
+   *  });
+   *
+   * @internal
+   */
+
+  var ANONYMOUS = '<<anonymous>>';
+
+  // Important!
+  // Keep this list in sync with production version in `./factoryWithThrowingShims.js`.
+  var ReactPropTypes = {
+    array: createPrimitiveTypeChecker('array'),
+    bool: createPrimitiveTypeChecker('boolean'),
+    func: createPrimitiveTypeChecker('function'),
+    number: createPrimitiveTypeChecker('number'),
+    object: createPrimitiveTypeChecker('object'),
+    string: createPrimitiveTypeChecker('string'),
+    symbol: createPrimitiveTypeChecker('symbol'),
+
+    any: createAnyTypeChecker(),
+    arrayOf: createArrayOfTypeChecker,
+    element: createElementTypeChecker(),
+    instanceOf: createInstanceTypeChecker,
+    node: createNodeChecker(),
+    objectOf: createObjectOfTypeChecker,
+    oneOf: createEnumTypeChecker,
+    oneOfType: createUnionTypeChecker,
+    shape: createShapeTypeChecker
+  };
+
+  /**
+   * inlined Object.is polyfill to avoid requiring consumers ship their own
+   * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/is
+   */
+  /*eslint-disable no-self-compare*/
+  function is(x, y) {
+    // SameValue algorithm
+    if (x === y) {
+      // Steps 1-5, 7-10
+      // Steps 6.b-6.e: +0 != -0
+      return x !== 0 || 1 / x === 1 / y;
+    } else {
+      // Step 6.a: NaN == NaN
+      return x !== x && y !== y;
+    }
+  }
+  /*eslint-enable no-self-compare*/
+
+  /**
+   * We use an Error-like object for backward compatibility as people may call
+   * PropTypes directly and inspect their output. However, we don't use real
+   * Errors anymore. We don't inspect their stack anyway, and creating them
+   * is prohibitively expensive if they are created too often, such as what
+   * happens in oneOfType() for any type before the one that matched.
+   */
+  function PropTypeError(message) {
+    this.message = message;
+    this.stack = '';
+  }
+  // Make `instanceof Error` still work for returned errors.
+  PropTypeError.prototype = Error.prototype;
+
+  function createChainableTypeChecker(validate) {
+    if (process.env.NODE_ENV !== 'production') {
+      var manualPropTypeCallCache = {};
+      var manualPropTypeWarningCount = 0;
+    }
+    function checkType(isRequired, props, propName, componentName, location, propFullName, secret) {
+      componentName = componentName || ANONYMOUS;
+      propFullName = propFullName || propName;
+
+      if (secret !== ReactPropTypesSecret_1) {
+        if (throwOnDirectAccess) {
+          // New behavior only for users of `prop-types` package
+          invariant_1(false, 'Calling PropTypes validators directly is not supported by the `prop-types` package. ' + 'Use `PropTypes.checkPropTypes()` to call them. ' + 'Read more at http://fb.me/use-check-prop-types');
+        } else if (process.env.NODE_ENV !== 'production' && typeof console !== 'undefined') {
+          // Old behavior for people using React.PropTypes
+          var cacheKey = componentName + ':' + propName;
+          if (!manualPropTypeCallCache[cacheKey] &&
+          // Avoid spamming the console because they are often not actionable except for lib authors
+          manualPropTypeWarningCount < 3) {
+            warning_1(false, 'You are manually calling a React.PropTypes validation ' + 'function for the `%s` prop on `%s`. This is deprecated ' + 'and will throw in the standalone `prop-types` package. ' + 'You may be seeing this warning due to a third-party PropTypes ' + 'library. See https://fb.me/react-warning-dont-call-proptypes ' + 'for details.', propFullName, componentName);
+            manualPropTypeCallCache[cacheKey] = true;
+            manualPropTypeWarningCount++;
+          }
+        }
+      }
+      if (props[propName] == null) {
+        if (isRequired) {
+          if (props[propName] === null) {
+            return new PropTypeError('The ' + location + ' `' + propFullName + '` is marked as required ' + ('in `' + componentName + '`, but its value is `null`.'));
+          }
+          return new PropTypeError('The ' + location + ' `' + propFullName + '` is marked as required in ' + ('`' + componentName + '`, but its value is `undefined`.'));
+        }
+        return null;
+      } else {
+        return validate(props, propName, componentName, location, propFullName);
+      }
+    }
+
+    var chainedCheckType = checkType.bind(null, false);
+    chainedCheckType.isRequired = checkType.bind(null, true);
+
+    return chainedCheckType;
+  }
+
+  function createPrimitiveTypeChecker(expectedType) {
+    function validate(props, propName, componentName, location, propFullName, secret) {
+      var propValue = props[propName];
+      var propType = getPropType(propValue);
+      if (propType !== expectedType) {
+        // `propValue` being instance of, say, date/regexp, pass the 'object'
+        // check, but we can offer a more precise error message here rather than
+        // 'of type `object`'.
+        var preciseType = getPreciseType(propValue);
+
+        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + preciseType + '` supplied to `' + componentName + '`, expected ') + ('`' + expectedType + '`.'));
+      }
+      return null;
+    }
+    return createChainableTypeChecker(validate);
+  }
+
+  function createAnyTypeChecker() {
+    return createChainableTypeChecker(emptyFunction_1.thatReturnsNull);
+  }
+
+  function createArrayOfTypeChecker(typeChecker) {
+    function validate(props, propName, componentName, location, propFullName) {
+      if (typeof typeChecker !== 'function') {
+        return new PropTypeError('Property `' + propFullName + '` of component `' + componentName + '` has invalid PropType notation inside arrayOf.');
+      }
+      var propValue = props[propName];
+      if (!Array.isArray(propValue)) {
+        var propType = getPropType(propValue);
+        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + propType + '` supplied to `' + componentName + '`, expected an array.'));
+      }
+      for (var i = 0; i < propValue.length; i++) {
+        var error = typeChecker(propValue, i, componentName, location, propFullName + '[' + i + ']', ReactPropTypesSecret_1);
+        if (error instanceof Error) {
+          return error;
+        }
+      }
+      return null;
+    }
+    return createChainableTypeChecker(validate);
+  }
+
+  function createElementTypeChecker() {
+    function validate(props, propName, componentName, location, propFullName) {
+      var propValue = props[propName];
+      if (!isValidElement(propValue)) {
+        var propType = getPropType(propValue);
+        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + propType + '` supplied to `' + componentName + '`, expected a single ReactElement.'));
+      }
+      return null;
+    }
+    return createChainableTypeChecker(validate);
+  }
+
+  function createInstanceTypeChecker(expectedClass) {
+    function validate(props, propName, componentName, location, propFullName) {
+      if (!(props[propName] instanceof expectedClass)) {
+        var expectedClassName = expectedClass.name || ANONYMOUS;
+        var actualClassName = getClassName(props[propName]);
+        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + actualClassName + '` supplied to `' + componentName + '`, expected ') + ('instance of `' + expectedClassName + '`.'));
+      }
+      return null;
+    }
+    return createChainableTypeChecker(validate);
+  }
+
+  function createEnumTypeChecker(expectedValues) {
+    if (!Array.isArray(expectedValues)) {
+      process.env.NODE_ENV !== 'production' ? warning_1(false, 'Invalid argument supplied to oneOf, expected an instance of array.') : void 0;
+      return emptyFunction_1.thatReturnsNull;
+    }
+
+    function validate(props, propName, componentName, location, propFullName) {
+      var propValue = props[propName];
+      for (var i = 0; i < expectedValues.length; i++) {
+        if (is(propValue, expectedValues[i])) {
+          return null;
+        }
+      }
+
+      var valuesString = JSON.stringify(expectedValues);
+      return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of value `' + propValue + '` ' + ('supplied to `' + componentName + '`, expected one of ' + valuesString + '.'));
+    }
+    return createChainableTypeChecker(validate);
+  }
+
+  function createObjectOfTypeChecker(typeChecker) {
+    function validate(props, propName, componentName, location, propFullName) {
+      if (typeof typeChecker !== 'function') {
+        return new PropTypeError('Property `' + propFullName + '` of component `' + componentName + '` has invalid PropType notation inside objectOf.');
+      }
+      var propValue = props[propName];
+      var propType = getPropType(propValue);
+      if (propType !== 'object') {
+        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + propType + '` supplied to `' + componentName + '`, expected an object.'));
+      }
+      for (var key in propValue) {
+        if (propValue.hasOwnProperty(key)) {
+          var error = typeChecker(propValue, key, componentName, location, propFullName + '.' + key, ReactPropTypesSecret_1);
+          if (error instanceof Error) {
+            return error;
+          }
+        }
+      }
+      return null;
+    }
+    return createChainableTypeChecker(validate);
+  }
+
+  function createUnionTypeChecker(arrayOfTypeCheckers) {
+    if (!Array.isArray(arrayOfTypeCheckers)) {
+      process.env.NODE_ENV !== 'production' ? warning_1(false, 'Invalid argument supplied to oneOfType, expected an instance of array.') : void 0;
+      return emptyFunction_1.thatReturnsNull;
+    }
+
+    for (var i = 0; i < arrayOfTypeCheckers.length; i++) {
+      var checker = arrayOfTypeCheckers[i];
+      if (typeof checker !== 'function') {
+        warning_1(false, 'Invalid argument supplid to oneOfType. Expected an array of check functions, but ' + 'received %s at index %s.', getPostfixForTypeWarning(checker), i);
+        return emptyFunction_1.thatReturnsNull;
+      }
+    }
+
+    function validate(props, propName, componentName, location, propFullName) {
+      for (var i = 0; i < arrayOfTypeCheckers.length; i++) {
+        var checker = arrayOfTypeCheckers[i];
+        if (checker(props, propName, componentName, location, propFullName, ReactPropTypesSecret_1) == null) {
+          return null;
+        }
+      }
+
+      return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` supplied to ' + ('`' + componentName + '`.'));
+    }
+    return createChainableTypeChecker(validate);
+  }
+
+  function createNodeChecker() {
+    function validate(props, propName, componentName, location, propFullName) {
+      if (!isNode(props[propName])) {
+        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` supplied to ' + ('`' + componentName + '`, expected a ReactNode.'));
+      }
+      return null;
+    }
+    return createChainableTypeChecker(validate);
+  }
+
+  function createShapeTypeChecker(shapeTypes) {
+    function validate(props, propName, componentName, location, propFullName) {
+      var propValue = props[propName];
+      var propType = getPropType(propValue);
+      if (propType !== 'object') {
+        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type `' + propType + '` ' + ('supplied to `' + componentName + '`, expected `object`.'));
+      }
+      for (var key in shapeTypes) {
+        var checker = shapeTypes[key];
+        if (!checker) {
+          continue;
+        }
+        var error = checker(propValue, key, componentName, location, propFullName + '.' + key, ReactPropTypesSecret_1);
+        if (error) {
+          return error;
+        }
+      }
+      return null;
+    }
+    return createChainableTypeChecker(validate);
+  }
+
+  function isNode(propValue) {
+    switch (typeof propValue) {
+      case 'number':
+      case 'string':
+      case 'undefined':
+        return true;
+      case 'boolean':
+        return !propValue;
+      case 'object':
+        if (Array.isArray(propValue)) {
+          return propValue.every(isNode);
+        }
+        if (propValue === null || isValidElement(propValue)) {
+          return true;
+        }
+
+        var iteratorFn = getIteratorFn(propValue);
+        if (iteratorFn) {
+          var iterator = iteratorFn.call(propValue);
+          var step;
+          if (iteratorFn !== propValue.entries) {
+            while (!(step = iterator.next()).done) {
+              if (!isNode(step.value)) {
+                return false;
+              }
+            }
+          } else {
+            // Iterator will provide entry [k,v] tuples rather than values.
+            while (!(step = iterator.next()).done) {
+              var entry = step.value;
+              if (entry) {
+                if (!isNode(entry[1])) {
+                  return false;
+                }
+              }
+            }
+          }
+        } else {
+          return false;
+        }
+
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  function isSymbol(propType, propValue) {
+    // Native Symbol.
+    if (propType === 'symbol') {
+      return true;
+    }
+
+    // 19.4.3.5 Symbol.prototype[@@toStringTag] === 'Symbol'
+    if (propValue['@@toStringTag'] === 'Symbol') {
+      return true;
+    }
+
+    // Fallback for non-spec compliant Symbols which are polyfilled.
+    if (typeof Symbol === 'function' && propValue instanceof Symbol) {
+      return true;
+    }
+
+    return false;
+  }
+
+  // Equivalent of `typeof` but with special handling for array and regexp.
+  function getPropType(propValue) {
+    var propType = typeof propValue;
+    if (Array.isArray(propValue)) {
+      return 'array';
+    }
+    if (propValue instanceof RegExp) {
+      // Old webkits (at least until Android 4.0) return 'function' rather than
+      // 'object' for typeof a RegExp. We'll normalize this here so that /bla/
+      // passes PropTypes.object.
+      return 'object';
+    }
+    if (isSymbol(propType, propValue)) {
+      return 'symbol';
+    }
+    return propType;
+  }
+
+  // This handles more types than `getPropType`. Only used for error messages.
+  // See `createPrimitiveTypeChecker`.
+  function getPreciseType(propValue) {
+    if (typeof propValue === 'undefined' || propValue === null) {
+      return '' + propValue;
+    }
+    var propType = getPropType(propValue);
+    if (propType === 'object') {
+      if (propValue instanceof Date) {
+        return 'date';
+      } else if (propValue instanceof RegExp) {
+        return 'regexp';
+      }
+    }
+    return propType;
+  }
+
+  // Returns a string that is postfixed to a warning about an invalid type.
+  // For example, "undefined" or "of type array"
+  function getPostfixForTypeWarning(value) {
+    var type = getPreciseType(value);
+    switch (type) {
+      case 'array':
+      case 'object':
+        return 'an ' + type;
+      case 'boolean':
+      case 'date':
+      case 'regexp':
+        return 'a ' + type;
+      default:
+        return type;
+    }
+  }
+
+  // Returns class name of the object, if any.
+  function getClassName(propValue) {
+    if (!propValue.constructor || !propValue.constructor.name) {
+      return ANONYMOUS;
+    }
+    return propValue.constructor.name;
+  }
+
+  ReactPropTypes.checkPropTypes = checkPropTypes_1;
+  ReactPropTypes.PropTypes = ReactPropTypes;
+
+  return ReactPropTypes;
+};
+
+var factoryWithThrowingShims = function () {
+  function shim(props, propName, componentName, location, propFullName, secret) {
+    if (secret === ReactPropTypesSecret_1) {
+      // It is still safe when called from React.
+      return;
+    }
+    invariant_1(false, 'Calling PropTypes validators directly is not supported by the `prop-types` package. ' + 'Use PropTypes.checkPropTypes() to call them. ' + 'Read more at http://fb.me/use-check-prop-types');
+  }
+  shim.isRequired = shim;
+  function getShim() {
+    return shim;
+  }
+  // Important!
+  // Keep this list in sync with production version in `./factoryWithTypeCheckers.js`.
+  var ReactPropTypes = {
+    array: shim,
+    bool: shim,
+    func: shim,
+    number: shim,
+    object: shim,
+    string: shim,
+    symbol: shim,
+
+    any: shim,
+    arrayOf: getShim,
+    element: shim,
+    instanceOf: getShim,
+    node: shim,
+    objectOf: getShim,
+    oneOf: getShim,
+    oneOfType: getShim,
+    shape: getShim
+  };
+
+  ReactPropTypes.checkPropTypes = emptyFunction_1;
+  ReactPropTypes.PropTypes = ReactPropTypes;
+
+  return ReactPropTypes;
+};
+
+var index$1 = createCommonjsModule(function (module) {
+/**
+ * Copyright 2013-present, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ */
+
+if (process.env.NODE_ENV !== 'production') {
+  var REACT_ELEMENT_TYPE = typeof Symbol === 'function' && Symbol.for && Symbol.for('react.element') || 0xeac7;
+
+  var isValidElement = function (object) {
+    return typeof object === 'object' && object !== null && object.$$typeof === REACT_ELEMENT_TYPE;
+  };
+
+  // By explicitly using `prop-types` you are opting into new development behavior.
+  // http://fb.me/prop-types-in-prod
+  var throwOnDirectAccess = true;
+  module.exports = factoryWithTypeCheckers(isValidElement, throwOnDirectAccess);
+} else {
+  // By explicitly using `prop-types` you are opting into new production behavior.
+  // http://fb.me/prop-types-in-prod
+  module.exports = factoryWithThrowingShims();
+}
+});
+
+var ComponentTreeCache = new Map();
+var InstanceCache = new Map();
 
 var NodeCache$2 = Internals.NodeCache;
 var assign$4 = Object.assign;
@@ -1740,6 +2518,7 @@ reactLikeComponentTask.syncTreeHook = function (oldTree, newTree) {
 
       if (oldInstance) {
         oldInstance.componentWillReceiveProps(props);
+        oldInstance.props = props;
 
         if (oldInstance.shouldComponentUpdate()) {
           renderTree = oldInstance.render(props, oldInstance.state);
@@ -1831,8 +2610,9 @@ var NodeCache$1 = Internals.NodeCache;
 var keys$1 = Object.keys;
 var assign$3 = Object.assign;
 
-// Allow tests to unbind this task, you would not typically need to do this
-// in a web application, as this code loads once and is not reloaded.
+// Registers a custom middleware to help map the diffHTML render lifecycle
+// internals to React. This currently isn't necessary for the Web Component
+// implementation since they inherently provide lifecycle hooks.
 var subscribeMiddleware = function () { return use(reactLikeComponentTask); };
 var unsubscribeMiddleware = subscribeMiddleware();
 
@@ -1857,10 +2637,14 @@ var Component = upgradeClass((function () {
       props[prop] = defaultProps[prop];
     });
 
-    
+    if (process$2.env.NODE_ENV !== 'production') {
+      if (index$1.checkPropTypes) {
+        index$1.checkPropTypes(propTypes, props, 'prop', name);
+      }
+    }
 
     //keys(childContextTypes).forEach(prop => {
-    //  if ("production" !== 'production') {
+    //  if (process.env.NODE_ENV !== 'production') {
     //    const err = childContextTypes[prop](this.context, prop, name, 'context');
     //    if (err) { throw err; }
     //  }
@@ -1869,7 +2653,7 @@ var Component = upgradeClass((function () {
     //});
 
     //keys(contextTypes).forEach(prop => {
-    //  if ("production" !== 'production') {
+    //  if (process.env.NODE_ENV !== 'production') {
     //    const err = childContextTypes[prop](this.context, prop, name, 'context');
     //    if (err) { throw err; }
     //  }
@@ -1902,15 +2686,15 @@ var Component = upgradeClass((function () {
   return Component;
 }()));
 
-var _vtree = createTree('#text', null, "\n        ");
-var _vtree2 = createTree('#text', null, "\n\n          ");
-var _vtree3 = createTree('#text', null, "\n            ");
-var _vtree4 = createTree('#text', null, "\n\n            ");
-var _vtree5 = createTree('#text', null, "\n          ");
-var _vtree6 = createTree('#text', null, "\n\n          ");
-var _vtree7 = createTree('#text', null, "\n            ");
-var _vtree8 = createTree('#text', null, "\n\n            ");
-var _vtree9 = createTree('#text', null, "\n          ");
+var _vtree$1 = createTree('#text', null, "\n        ");
+var _vtree2$1 = createTree('#text', null, "\n\n          ");
+var _vtree3$1 = createTree('#text', null, "\n            ");
+var _vtree4$1 = createTree('#text', null, "\n\n            ");
+var _vtree5$1 = createTree('#text', null, "\n          ");
+var _vtree6$1 = createTree('#text', null, "\n\n          ");
+var _vtree7$1 = createTree('#text', null, "\n            ");
+var _vtree8$1 = createTree('#text', null, "\n\n            ");
+var _vtree9$1 = createTree('#text', null, "\n          ");
 
 var Card = (function (Component$$1) {
   function Card(props) {
@@ -1942,10 +2726,11 @@ var Card = (function (Component$$1) {
     var isRed = suit === 'diamond' || suit == 'heart';
 
     return createTree("g", {
+      "style": { cursor: 'pointer' },
       "transform": ("translate(" + x + ", " + y + ")"),
       "width": width,
       "height": height
-    }, [_vtree, createTree("rect", {
+    }, [_vtree$1, createTree("rect", {
       "class": "background",
       "x": "0",
       "y": "0",
@@ -1963,41 +2748,41 @@ var Card = (function (Component$$1) {
       "rx": "8",
       "ry": "8",
       "fill": "url(#card_background)"
-    }, []), _vtree2, createTree("g", {
+    }, []), _vtree2$1, createTree("g", {
       "class": "top",
       "text-anchor": "start"
-    }, [_vtree3, createTree("text", {
+    }, [_vtree3$1, createTree("text", {
       "class": "label-top",
       "font-weight": "bold",
       "font-size": fontSize,
       "fill": isRed ? '#FF0000' : '#000000',
       "x": fontX,
       "y": fontY
-    }, [label]), _vtree4, createTree("text", {
+    }, [label]), _vtree4$1, createTree("text", {
       "class": "suit-top",
       "font-weight": "bold",
       "font-size": graphicSize,
       "fill": isRed ? '#FF0000' : '#000000',
       "x": fontX,
       "y": fontY * 2
-    }, [createTree('#document-fragment', null, [suit === 'heart' && '♥', createTree('#text', '\n              '), suit === 'spade' && '♠', createTree('#text', '\n              '), suit === 'diamond' && '♦', createTree('#text', '\n              '), suit === 'club' && '♣'])]), _vtree5]), _vtree6, createTree("g", {
+    }, [createTree('#document-fragment', null, [suit === 'heart' && '♥', createTree('#text', '\n              '), suit === 'spade' && '♠', createTree('#text', '\n              '), suit === 'diamond' && '♦', createTree('#text', '\n              '), suit === 'club' && '♣'])]), _vtree5$1]), _vtree6$1, createTree("g", {
       "class": "bottom",
       "text-anchor": "end"
-    }, [_vtree7, createTree("text", {
+    }, [_vtree7$1, createTree("text", {
       "class": "label-bottom",
       "font-weight": "bold",
       "font-size": fontSize,
       "fill": isRed ? '#FF0000' : '#000000',
       "x": width - fontX,
       "y": height - fontY * 0.65
-    }, [label]), _vtree8, createTree("text", {
+    }, [label]), _vtree8$1, createTree("text", {
       "class": "suit-bottom",
       "font-weight": "bold",
       "font-size": graphicSize,
       "fill": isRed ? '#FF0000' : '#000000',
       "x": width - fontX,
       "y": height - fontY * 1.5
-    }, [createTree('#document-fragment', null, [suit === 'heart' && '♥', createTree('#text', '\n              '), suit === 'spade' && '♠', createTree('#text', '\n              '), suit === 'diamond' && '♦', createTree('#text', '\n              '), suit === 'club' && '♣'])]), _vtree9])]]);
+    }, [createTree('#document-fragment', null, [suit === 'heart' && '♥', createTree('#text', '\n              '), suit === 'spade' && '♠', createTree('#text', '\n              '), suit === 'diamond' && '♦', createTree('#text', '\n              '), suit === 'club' && '♣'])]), _vtree9$1])]]);
   };
 
   Card.prototype.componentWillReceiveProps = function componentWillReceiveProps (nextProps) {
@@ -2059,89 +2844,726 @@ Card.defaultProps = {
   facing: true
 };
 
-var mount = document.querySelector('.playing-card');
-function spiral(n) {
-  var r = Math.floor((Math.sqrt(n + 1) - 1) / 2) + 1;
-  var p = 8 * r * (r - 1) / 2;
-  var en = r * 2;
-  var a = (1 + n - p) % (r * 8);
-  var pos = [0, 0, r];
+var _vtree$2 = createTree('#text', null, "\n        ");
+var _vtree2$2 = createTree('#text', null, "\n      ");
 
-  switch (Math.floor(a / (r * 2))) {
-    case 0:
-      {
-        pos[0] = a - r;
-        pos[1] = -r;
+var Board = (function (Component$$1) {
+  function Board() {
+    var this$1 = this;
+    var args = [], len = arguments.length;
+    while ( len-- ) args[ len ] = arguments[ len ];
 
-        break;
+    var _temp;
+
+    return _temp = Component$$1.apply(this, args), this.click = function (ev) {
+      if (this$1.state.color !== 'red') {
+        this$1.setState({ color: 'red' });
+      } else {
+        this$1.setState({ color: 'blue' });
       }
-
-    case 1:
-      {
-        pos[0] = r;
-        pos[1] = a % en - r;
-
-        break;
-      }
-
-    case 2:
-      {
-        pos[0] = r - a % en;
-        pos[1] = r;
-
-        break;
-      }
-
-    case 3:
-      {
-        pos[0] = -r;
-        pos[1] = r - a % en;
-
-        break;
-      }
+    }, _temp;
   }
 
-  return pos;
-}
+  if ( Component$$1 ) Board.__proto__ = Component$$1;
+  Board.prototype = Object.create( Component$$1 && Component$$1.prototype );
+  Board.prototype.constructor = Board;
 
-var modifier = 1;
-var deck = new Deck(52);
-
-function update(a) {
-  if (a > 300) {
-    modifier = -1;
-  } else if (a === 1) {
-    modifier = 1;
-  }
-
-  var cards = deck.cards.map(function (card, i) { return ({
-    width: 100 + a * 0.5,
-    value: card,
-    x: 200 + a * 0.5 * spiral(i)[0],
-    y: 200 + a * 0.5 * spiral(i)[1]
-  }); });
-
-  render(cards);
-  requestAnimationFrame(function () { return update(a + modifier); });
-}
-
-function render(cards) {
-  innerHTML(mount, cards.map(function (ref) {
-    var width = ref.width;
-    var value = ref.value;
+  Board.prototype.render = function render () {
+    var ref = this.props;
     var x = ref.x;
     var y = ref.y;
+    var width = ref.width;
+    var children = ref.children;
+    var style = ref.style;
+    var ref$1 = this;
+    var color = ref$1.color;
+    var height = 300;
 
-    return createTree(Card, {
-    "width": width,
-    "value": value,
-    "x": x,
-    "y": y,
-    "facing": "facing"
-  }, []);
-  }));
+    return createTree("g", {
+      "onclick": this.click,
+      "transform": ("translate(" + x + ", " + y + ")")
+    }, [_vtree$2, createTree("rect", {
+      "class": "background",
+      "x": "0",
+      "y": "0",
+      "rx": "8",
+      "ry": "8",
+      "fill": this.state.color || "#8C5831",
+      "style": { width: width, height: height }
+    }, []), _vtree2$2]);
+  };
+
+  return Board;
+}(Component));
+
+Board.defaultProps = {
+  x: 10,
+  y: 10,
+  width: 50
+};
+
+(typeof window !== 'undefined' ? window : global).process = Internals.process;
+
+var process$3 = Internals.process;
+
+var ComponentTreeCache$1 = new Map();
+var InstanceCache$1 = new Map();
+
+var caches$2 = Object.freeze({
+	ComponentTreeCache: ComponentTreeCache$1,
+	InstanceCache: InstanceCache$1
+});
+
+var NodeCache$4 = Internals.NodeCache;
+var assign$9 = Object.assign;
+
+function triggerRef$1(ref, instance) {
+  if (typeof ref === 'function') {
+    ref(instance);
+  } else if (typeof ref === 'string') {
+    this[ref](instance);
+  }
 }
 
-update(1);
+function searchForRefs$1(newTree) {
+  if (newTree.attributes.ref) {
+    triggerRef$1(newTree.attributes.ref, NodeCache$4.get(newTree));
+  }
+
+  newTree.childNodes.forEach(searchForRefs$1);
+}
+
+function componentDidMount$1(newTree) {
+  if (InstanceCache$1.has(newTree)) {
+    InstanceCache$1.get(newTree).componentDidMount();
+  }
+
+  var instance = InstanceCache$1.get(newTree);
+
+  searchForRefs$1(newTree);
+
+  if (!instance) {
+    return;
+  }
+
+  var ref$1 = instance.props;
+  var ref = ref$1.ref;
+
+  triggerRef$1(ref, instance);
+}
+
+function componentDidUnmount$1(oldTree) {
+  if (InstanceCache$1.has(oldTree)) {
+    InstanceCache$1.get(oldTree).componentDidUnmount();
+  }
+
+  var instance = InstanceCache$1.get(oldTree);
+
+  searchForRefs$1(oldTree);
+
+  if (!instance) {
+    return;
+  }
+
+  var ref$1 = instance.props;
+  var ref = ref$1.ref;
+
+  triggerRef$1(ref, null);
+}
+
+function reactLikeComponentTask$1(transaction) {
+  return transaction.onceEnded(function () {
+    if (transaction.aborted) {
+      return;
+    }
+
+    var patches = transaction.patches;
+
+    if (patches.TREE_OPS && patches.TREE_OPS.length) {
+      patches.TREE_OPS.forEach(function (ref) {
+        var INSERT_BEFORE = ref.INSERT_BEFORE;
+        var REPLACE_CHILD = ref.REPLACE_CHILD;
+        var REMOVE_CHILD = ref.REMOVE_CHILD;
+
+        if (INSERT_BEFORE) {
+          for (var i = 0; i < INSERT_BEFORE.length; i += 3) {
+            var newTree = INSERT_BEFORE[i + 1];
+            componentDidMount$1(newTree);
+          }
+        }
+
+        if (REPLACE_CHILD) {
+          for (var i$1 = 0; i$1 < REPLACE_CHILD.length; i$1 += 2) {
+            var newTree$1 = REPLACE_CHILD[i$1];
+            componentDidMount$1(newTree$1);
+          }
+        }
+
+        if (REMOVE_CHILD) {
+          for (var i$2 = 0; i$2 < REMOVE_CHILD.length; i$2 += 1) {
+            var oldTree = REMOVE_CHILD[i$2];
+            componentDidUnmount$1(oldTree);
+          }
+        }
+      });
+    }
+  });
+}
+
+reactLikeComponentTask$1.syncTreeHook = function (oldTree, newTree) {
+  var oldChildNodes = oldTree && oldTree.childNodes;
+
+  // Stateful components have a very limited API, designed to be fully
+  // implemented by a higher-level abstraction. The only method ever called is
+  // `render`. It is up to a higher level abstraction on how to handle the
+  // changes.
+  for (var i = 0; i < newTree.childNodes.length; i++) {
+    var newChild = newTree.childNodes[i];
+
+    // If incoming tree is a component, flatten down to tree for now.
+    if (newChild && typeof newChild.rawNodeName === 'function') {
+      var newCtor = newChild.rawNodeName;
+      var oldChild = oldChildNodes && oldChildNodes[i];
+      var oldInstanceCache = InstanceCache$1.get(oldChild);
+      var children = newChild.childNodes;
+      var props = assign$9({}, newChild.attributes, { children: children });
+      var canNew = newCtor.prototype;
+
+      // If the component has already been initialized, we can reuse it.
+      var oldInstance = oldChild && oldInstanceCache instanceof newCtor && oldInstanceCache;
+      var newInstance = !oldInstance && canNew && new newCtor(props);
+      var instance = oldInstance || newInstance;
+
+      var renderTree = null;
+
+      if (oldInstance) {
+        oldInstance.componentWillReceiveProps(props);
+        oldInstance.props = props;
+
+        if (oldInstance.shouldComponentUpdate()) {
+          renderTree = oldInstance.render(props, oldInstance.state);
+        }
+      } else if (instance && instance.render) {
+        renderTree = createTree(instance.render(props, instance.state));
+      } else {
+        renderTree = createTree(newCtor(props));
+      }
+
+      // Nothing was rendered so continue.
+      if (!renderTree) {
+        continue;
+      }
+
+      // Replace the rendered value into the new tree, if rendering a fragment
+      // this will inject the contents into the parent.
+      if (renderTree.nodeType === 11) {
+        newTree.childNodes = [].concat( renderTree.childNodes );
+
+        if (instance) {
+          ComponentTreeCache$1.set(instance, oldTree);
+          InstanceCache$1.set(oldTree, instance);
+        }
+      }
+      // If the rendered value is a single element use it as the root for
+      // diffing.
+      else {
+          newTree.childNodes[i] = renderTree;
+
+          if (instance) {
+            ComponentTreeCache$1.set(instance, renderTree);
+            InstanceCache$1.set(renderTree, instance);
+          }
+        }
+    }
+  }
+
+  return newTree;
+};
+
+var lifecycleHooks$1 = {
+  shouldComponentUpdate: function shouldComponentUpdate() {
+    return true;
+  },
+  componentWillReceiveProps: function componentWillReceiveProps() {},
+  componentWillMount: function componentWillMount() {},
+  componentDidMount: function componentDidMount() {},
+  componentDidUpdate: function componentDidUpdate() {},
+  componentWillUnmount: function componentWillUnmount() {},
+  componentDidUnmount: function componentDidUnmount() {}
+};
+
+var $$render$1 = Symbol('diff.render');
+
+var Debounce$2 = new WeakMap();
+var assign$11 = Object.assign;
+
+function setState$1(newState) {
+  var this$1 = this;
+
+  this.state = assign$11({}, this.state, newState);
+
+  if (!Debounce$2.has(this) && this.shouldComponentUpdate()) {
+    this[$$render$1]();
+
+    Debounce$2.set(this, setTimeout(function () {
+      Debounce$2.delete(this$1);
+
+      if (this$1.shouldComponentUpdate()) {
+        this$1[$$render$1]();
+      }
+    }));
+  }
+}
+
+function forceUpdate$1() {
+  this[$$render$1]();
+}
+
+var assign$10 = Object.assign;
+
+function upgradeClass$1(Constructor) {
+  assign$10(Constructor.prototype, lifecycleHooks$1, { forceUpdate: forceUpdate$1, setState: setState$1 });
+  return Constructor;
+}
+
+var NodeCache$3 = Internals.NodeCache;
+var keys$2 = Object.keys;
+var assign$8 = Object.assign;
+
+// Registers a custom middleware to help map the diffHTML render lifecycle
+// internals to React. This currently isn't necessary for the Web Component
+// implementation since they inherently provide lifecycle hooks.
+var subscribeMiddleware$1 = function () { return use(reactLikeComponentTask$1); };
+var unsubscribeMiddleware$1 = subscribeMiddleware$1();
+
+upgradeClass$1((function () {
+  function Component(initialProps) {
+    var props = this.props = assign$8({}, initialProps);
+    var state = this.state = {};
+    var context = this.context = {};
+
+    var ref = this.constructor;
+  var defaultProps = ref.defaultProps; if ( defaultProps === void 0 ) defaultProps = {};
+  var propTypes = ref.propTypes; if ( propTypes === void 0 ) propTypes = {};
+  var childContextTypes = ref.childContextTypes; if ( childContextTypes === void 0 ) childContextTypes = {};
+  var contextTypes = ref.contextTypes; if ( contextTypes === void 0 ) contextTypes = {};
+  var name = ref.name;
+
+    keys$2(defaultProps).forEach(function (prop) {
+      if (prop in props && props[prop] !== undefined) {
+        return;
+      }
+
+      props[prop] = defaultProps[prop];
+    });
+
+    if (process$3.env.NODE_ENV !== 'production') {
+      if (index$1.checkPropTypes) {
+        index$1.checkPropTypes(propTypes, props, 'prop', name);
+      }
+    }
+
+    //keys(childContextTypes).forEach(prop => {
+    //  if (process.env.NODE_ENV !== 'production') {
+    //    const err = childContextTypes[prop](this.context, prop, name, 'context');
+    //    if (err) { throw err; }
+    //  }
+
+    //  //this.context[prop] = child
+    //});
+
+    //keys(contextTypes).forEach(prop => {
+    //  if (process.env.NODE_ENV !== 'production') {
+    //    const err = childContextTypes[prop](this.context, prop, name, 'context');
+    //    if (err) { throw err; }
+    //  }
+
+    //  this.context[prop] = child
+    //});
+  }
+
+  Component.subscribeMiddleware = function subscribeMiddleware$1 () {
+    return subscribeMiddleware$1();
+  };
+
+  Component.unsubscribeMiddleware = function unsubscribeMiddleware$1 () {
+    unsubscribeMiddleware$1();
+    return subscribeMiddleware$1;
+  };
+
+  Component.prototype[$$render$1] = function () {
+    var this$1 = this;
+
+    var vTree = ComponentTreeCache$1.get(this);
+    var domNode = NodeCache$3.get(vTree);
+    var renderTree = this.render();
+
+    outerHTML(domNode, renderTree).then(function () {
+      this$1.componentDidUpdate();
+    });
+  };
+
+  return Component;
+}()));
+
+var NodeCache$5 = Internals.NodeCache;
+function webComponentTask(transaction) {
+  return transaction.onceEnded(function () {
+    if (transaction.aborted) {
+      return;
+    }
+
+    var patches = transaction.patches;
+
+    if (patches.TREE_OPS && patches.TREE_OPS.length) {
+      patches.TREE_OPS.forEach(function (ref) {
+        var INSERT_BEFORE = ref.INSERT_BEFORE;
+        var REPLACE_CHILD = ref.REPLACE_CHILD;
+        var REMOVE_CHILD = ref.REMOVE_CHILD;
+
+        if (INSERT_BEFORE) {
+          for (var i = 0; i < INSERT_BEFORE.length; i += 3) {
+            var newTree = INSERT_BEFORE[i + 1];
+            var instance = NodeCache$5.get(newTree);
+
+            if (instance && instance.componentDidMount) {
+              instance.componentDidMount();
+            }
+          }
+        }
+
+        if (REPLACE_CHILD) {
+          for (var i$1 = 0; i$1 < REPLACE_CHILD.length; i$1 += 2) {
+            var newTree$1 = REPLACE_CHILD[i$1];
+            var instance$1 = NodeCache$5.get(newTree$1);
+
+            if (instance$1 && instance$1.componentDidMount) {
+              instance$1.componentDidMount();
+            }
+          }
+        }
+
+        if (REMOVE_CHILD) {
+          for (var i$2 = 0; i$2 < REMOVE_CHILD.length; i$2 += 1) {
+            var oldTree = REMOVE_CHILD[i$2];
+            var instance$2 = NodeCache$5.get(oldTree);
+
+            if (instance$2 && instance$2.componentDidUnmount) {
+              instance$2.componentDidUnmount();
+            }
+          }
+        }
+      });
+    }
+  });
+}
+
+webComponentTask.syncTreeHook = function (oldTree, newTree) {
+  // Stateful components have a very limited API, designed to be fully
+  // implemented by a higher-level abstraction. The only method ever called is
+  // `render`. It is up to a higher level abstraction on how to handle the
+  // changes.
+  if (!newTree || !newTree.childNodes) {
+    return newTree;
+  }
+
+  var loop = function ( i ) {
+    var oldChild = oldTree && oldTree.childNodes && oldTree.childNodes[i];
+    var newChild = newTree.childNodes[i];
+
+    // If incoming tree is a web component, flatten down to tree for now.
+    if (newChild && customElements.get(newChild.nodeName)) {
+      Object.defineProperty(newChild.attributes, 'children', {
+        get: function () { return newChild.childNodes; }
+      });
+    }
+  };
+
+  for (var i = 0; i < newTree.childNodes.length; i++) loop( i );
+
+  return newTree;
+};
+
+webComponentTask.createNodeHook = function (vTree) {
+  var Constructor = null;
+
+  if (Constructor = customElements.get(vTree.nodeName)) {
+    return new Constructor(vTree.attributes);
+  }
+};
+
+var Debounce$4 = new WeakMap();
+var assign$13 = Object.assign;
+var keys$3 = Object.keys;
+
+// Convert observed attributes from passed PropTypes.
+var getObserved = function (ref) {
+  var propTypes = ref.propTypes;
+
+  return propTypes ? keys$3(propTypes) : [];
+};
+
+// Creates the `component.props` object.
+var createProps = function (domNode) {
+  var observedAttributes = getObserved(domNode.constructor);
+  var initialProps = {
+    children: [].map.call(domNode.childNodes, createTree)
+  };
+
+  return observedAttributes.reduce(function (props, attr) { return assign$13(props, ( obj = {}, obj[attr] = attr in domNode ? domNode[attr] : domNode.getAttribute(attr) || undefined, obj ))
+    var obj; }, initialProps);
+};
+
+// Creates the `component.state` object.
+var createState = function (domNode, newState) {
+  return assign$13({}, domNode.state, newState);
+};
+
+// Creates the `component.contxt` object.
+var createContext = function (domNode) {};
+
+// Allow tests to unbind this task, you would not typically need to do this
+// in a web application, as this code loads once and is not reloaded.
+var subscribeMiddleware$2 = function () { return use(webComponentTask); };
+var unsubscribeMiddleware$2 = subscribeMiddleware$2();
+
+upgradeClass$1((function (HTMLElement) {
+  function WebComponent() {
+    var this$1 = this;
+
+    HTMLElement.call(this);
+
+    this.props = createProps(this);
+    this.state = createState(this);
+    this.context = createContext(this);
+
+    var ref = this.constructor;
+    var defaultProps = ref.defaultProps; if ( defaultProps === void 0 ) defaultProps = {};
+    var propTypes = ref.propTypes; if ( propTypes === void 0 ) propTypes = {};
+    var childContextTypes = ref.childContextTypes; if ( childContextTypes === void 0 ) childContextTypes = {};
+    var contextTypes = ref.contextTypes; if ( contextTypes === void 0 ) contextTypes = {};
+    var name = ref.name;
+
+    keys$3(defaultProps).forEach(function (prop) {
+      if (prop in this$1.props && this$1.props[prop] !== undefined) {
+        return;
+      }
+
+      this$1.props[prop] = defaultProps[prop];
+    });
+
+    if (process.env.NODE_ENV !== 'production') {
+      if (index$1.checkPropTypes) {
+        index$1.checkPropTypes(propTypes, this.props, 'prop', name);
+      }
+    }
+  }
+
+  if ( HTMLElement ) WebComponent.__proto__ = HTMLElement;
+  WebComponent.prototype = Object.create( HTMLElement && HTMLElement.prototype );
+  WebComponent.prototype.constructor = WebComponent;
+
+  var staticAccessors = { observedAttributes: {} };
+
+  WebComponent.subscribeMiddleware = function subscribeMiddleware$1 () {
+    return subscribeMiddleware$2();
+  };
+
+  WebComponent.unsubscribeMiddleware = function unsubscribeMiddleware$1 () {
+    unsubscribeMiddleware$2();
+    return subscribeMiddleware$2;
+  };
+
+  staticAccessors.observedAttributes.get = function () {
+    return getObserved(this).map(function (key) { return key.toLowerCase(); });
+  };
+
+  WebComponent.prototype[$$render$1] = function () {
+    this.props = createProps(this);
+    innerHTML(this.shadowRoot, this.render(this.props, this.state));
+    this.componentDidUpdate();
+  };
+
+  WebComponent.prototype.connectedCallback = function connectedCallback () {
+    this.attachShadow({ mode: 'open' });
+    this[$$render$1]();
+    this.componentDidMount();
+  };
+
+  WebComponent.prototype.disconnectedCallback = function disconnectedCallback () {
+    // TODO Figure out a better place for `willUnmount`, use the detached
+    // transition to determine if a Node is removed would be very accurate
+    // as this fires just before an element is removed, also if the user
+    // is using a detached animation this would allow them to do something
+    // before the animation completes, giving you two nice callbacks to use
+    // for detaching.
+    this.componentWillUnmount();
+    this.componentDidUnmount();
+  };
+
+  WebComponent.prototype.attributeChangedCallback = function attributeChangedCallback () {
+    var this$1 = this;
+
+    if (this.shadowRoot && !Debounce$4.has(this)) {
+      var nextProps = createProps(this);
+      this.componentWillReceiveProps(nextProps);
+      this.props = nextProps;
+      this[$$render$1]();
+
+      Debounce$4.set(this, setTimeout(function () {
+        Debounce$4.delete(this$1);
+        this$1[$$render$1]();
+      }));
+    }
+  };
+
+  Object.defineProperties( WebComponent, staticAccessors );
+
+  return WebComponent;
+}(HTMLElement)));
+
+var caches$1 = caches$2;
+var monitorFile = null;
+var clearConsole = null;
+
+var handler = function (ref) {
+  var file = ref.file;
+  var markup = ref.markup;
+  var quiet = ref.quiet;
+
+  if (file.slice(-3) !== '.js') {
+    return false;
+  }
+
+  if (file !== monitorFile) {
+    return true;
+  }
+
+  if (!quiet) {
+    console.log('JS changed, reloading app...');
+  }
+
+  // Before doing anything lets reset everything on the page.
+  Internals.StateCache.forEach(function (state, domNode) {
+    domNode.innerHTML = '';
+    release(domNode);
+  });
+
+  caches$1.InstanceCache.clear();
+  caches$1.ComponentTreeCache.clear();
+
+  unsubscribe();
+
+  var existingEl = document.querySelector(("script[src^='" + file + "']"));
+
+  document.body.appendChild(Object.assign(document.createElement('script'), { src: file }));
+
+  if (existingEl) {
+    existingEl.parentNode.removeChild(existingEl);
+  }
+
+  if (clearConsole) {
+    console.clear();
+  }
+
+  return true;
+};
+
+var subscribe = function (opts) { return function () {
+  monitorFile = opts.src || 'dist/app.js';
+  clearConsole = opts.clearConsole;
+  window.onload = function () { return staticSyncHandlers.add(handler); };
+}; };
+var unsubscribe = function (opts) { return function () { return staticSyncHandlers.delete(handler); }; };
+
+var hmr = (function (opts) { return Object.assign(function hmrTask() {}, {
+  subscribe: subscribe(opts),
+  unsubscribe: unsubscribe(opts)
+}); });
+
+var _vtree = createTree('#text', null, "\n    ");
+var _vtree2 = createTree('#text', null, "\n      ");
+var _vtree3 = createTree('#text', null, "\n      ");
+var _vtree4 = createTree('#text', null, "\n      ");
+var _vtree5 = createTree('#text', null, "\n      ");
+var _vtree6 = createTree('#text', null, "\n    ");
+var _vtree7 = createTree('#text', null, "\n  ");
+var _vtree8 = createTree('#text', null, "\n\n  ");
+var _vtree9 = createTree('#text', null, "\n    ");
+var _vtree10 = createTree('#text', null, "\n  ");
+var _vtree11 = createTree('#text', null, "\n\n  ");
+var _vtree12 = createTree('#text', null, "\n    ");
+var _vtree13 = createTree('#text', null, "\n    ");
+var _vtree14 = createTree('#text', null, "\n    ");
+var _vtree15 = createTree('#text', null, "\n    ");
+var _vtree16 = createTree('#text', null, "\n    ");
+var _vtree17 = createTree('#text', null, "\n    ");
+var _vtree18 = createTree('#text', null, "\n  ");
+
+var mount = document.querySelector('svg');
+var deck = new Deck(52);
+
+use(hmr({ clearConsole: true, src: 'dist/cribbage.js' }));
+
+var render = function () { return innerHTML(mount, [createTree("defs", {}, [_vtree, createTree("linearGradient", {
+  "id": "card_background",
+  "x1": "0%",
+  "y1": "0%",
+  "x2": "100%",
+  "y2": "100%"
+}, [_vtree2, createTree("stop", {
+  "offset": "0%",
+  "style": "stop-color:rgb(230, 238, 243); stop-opacity:1"
+}, []), _vtree3, createTree("stop", {
+  "offset": "20%",
+  "style": "stop-color:rgb(255, 255, 255); stop-opacity: 1"
+}, []), _vtree4, createTree("stop", {
+  "offset": "40%",
+  "style": "stop-color:rgb(255, 255, 255); stop-opacity: 1"
+}, []), _vtree5, createTree("stop", {
+  "offset": "100%",
+  "style": "stop-color:rgb(200, 238, 243); stop-opacity:1"
+}, []), _vtree6]), _vtree7]), _vtree8, createTree("g", {
+  "class": "board"
+}, [_vtree9, createTree(Board, {
+  "width": window.innerWidth - 150,
+  "x": 50,
+  "y": 50
+}, []), _vtree10]), _vtree11, createTree("g", {
+  "class": "card"
+}, [_vtree12, createTree(Card, {
+  "value": deck.draw(),
+  "width": 100,
+  "x": 50,
+  "y": 400
+}, []), _vtree13, createTree(Card, {
+  "value": deck.draw(),
+  "width": 100,
+  "x": 175,
+  "y": 400
+}, []), _vtree14, createTree(Card, {
+  "value": deck.draw(),
+  "width": 100,
+  "x": 300,
+  "y": 400
+}, []), _vtree15, createTree(Card, {
+  "value": deck.draw(),
+  "width": 100,
+  "x": 425,
+  "y": 400
+}, []), _vtree16, createTree(Card, {
+  "value": deck.draw(),
+  "width": 100,
+  "x": 550,
+  "y": 400
+}, []), _vtree17, createTree(Card, {
+  "value": deck.draw(),
+  "width": 100,
+  "x": 675,
+  "y": 400
+}, []), _vtree18])]); };
+
+window.onresize = render;
+render();
 
 })));

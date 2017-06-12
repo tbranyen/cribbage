@@ -34,5 +34,5 @@ export const plugins = [
   buble(),
   nodeResolve({ jsnext: true }),
   commonjs(),
-  Visualizer({ filename: './dist/build-size.html' }),
+  NODE_ENV === 'production' && Visualizer({ filename: './dist/build-size.html' }),
 ];
